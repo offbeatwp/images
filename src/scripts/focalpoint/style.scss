@@ -1,0 +1,109 @@
+.focalpoint-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 200000;
+
+    * {
+        box-sizing: border-box;
+    }
+
+    &:before {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        content: "";
+        background-color: rgba(0, 0, 0, .2);
+
+    }
+
+    &__modal {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: calc(100vw - 60px);
+        max-width: 1400px;
+        background-color: #FFF;
+    }
+
+    &__head {
+        display: flex;
+
+        h1 {
+            padding: 0 16px;
+            font-size: 22px;
+            line-height: 53px;
+            margin: 0;
+            flex-grow: 1;
+        }
+
+        &__actions {
+            display: flex;
+            gap: 9px;
+            align-items: center;
+        }
+    }
+
+    &__close {
+        height: 53px;
+        width: 53px;
+        border: 0;
+        border-left: 1px solid #dcdcde;
+        background-color: transparent;
+
+    }
+
+    &__body {
+        padding: 16px;
+        border-top: 1px solid #dcdcde;
+        max-height: calc(100vh - 115px);
+        overflow: auto;
+    }
+
+    &__grid {
+        display: grid;       
+        grid-template-columns: 1fr 1fr; 
+        gap: 32px;
+    }
+
+    &__picker {
+        
+    }
+
+    &__preview {
+
+        &__grid {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            grid-template-rows: masonry;
+            gap: 16px;
+        }
+
+         &__item {
+            background-size: cover;
+            background-color: #EEEEEE;
+
+            grid-template-rows: 1fr auto;
+
+            border: 1px solid #dcdcde;
+            
+            &--square {
+                aspect-ratio: 1 / 1;
+            }
+
+            &--high {
+                aspect-ratio: 1 / 3;
+            }
+
+            &--wide {
+                aspect-ratio: 3 / 1;
+                grid-column-end: span 2;
+            }
+         }
+    }
+}

@@ -1,0 +1,29 @@
+{
+	"name": "heading-block",
+	"version": "0.1.0",
+	"description": "Enhanced Heading",
+	"author": "RAoW",
+	"license": "MIT",
+	"main": "build/index.js",
+	"babel": {
+		"presets": [
+			"@babel/preset-env",
+			"@babel/preset-react"
+		]
+	},
+	"scripts": {
+		"build": "wp-scripts build --output-path=./build/ --webpack-src-dir=src/scripts",
+		"format": "wp-scripts format",
+		"lint:css": "wp-scripts lint-style",
+		"lint:js": "wp-scripts lint-js",
+		"packages-update": "wp-scripts packages-update",
+		"start": "wp-scripts start --output-path=./build/ --webpack-src-dir=src/scripts"
+	},
+	"devDependencies": {
+		"@wordpress/i18n": "^4.2.4",
+		"@wordpress/scripts": "^24.5.0"
+	},
+	"dependencies": {
+		"@wordpress/icons": "^9.39.0"
+	}
+}

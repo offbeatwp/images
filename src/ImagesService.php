@@ -2,6 +2,7 @@
 
 namespace OffbeatWP\Images;
 
+use Error;
 use OffbeatWP\Images\Helpers\ImageHelper;
 use OffbeatWP\Contracts\View;
 use OffbeatWP\Services\AbstractService;
@@ -13,6 +14,8 @@ final class ImagesService extends AbstractService
 
     public function register(View $view): void
     {
+        add_action( 'admin_enqueue_scripts', [$this, 'enqueueAdminAssets'], 10 );
+
         add_filter('image_downsize', function ($out, $attachmentId, $size) {
             if (!is_string($size)) {
                 return $out;
@@ -441,4 +444,69 @@ final class ImagesService extends AbstractService
         ];
 
     }
+
+    public function enqueueAdminAssets() {
+        $entryBuildPath = dirname(__FILE__) . '/../build';
+        $assetPath = $entryBuildPath . '/index.asset.php';
+
+        if ( ! file_exists( $assetPath ) ) {
+            throw new Error(
+                esc_html__( 'You need to run `npm run start` or `npm run build` from the package folder first', 'offbeatwp' )
+            );
+        }
+
+        $assets  = include $assetPath;
+        $handleName = 'scripts-offbeatwp-images';
+
+        wp_enqueue_script(
+            $handleName,
+            get_template_directory_uri() . '/vendor/offbeatwp/images/build/index.js',
+            $assets['dependencies'],
+            $assets['version'],
+            ['in_footer' => true]
+        );
+
+        if (file_exists($entryBuildPath . '/style-index.css')) {
+            wp_enqueue_style(
+                $handleName,
+                get_template_directory_uri() . '/vendor/offbeatwp/images/build/style-index.css',
+                [],
+                $assets['version']
+            );
+        }
+
+        // $this->enqueueEntryPoint('images', __DIR__ . '/../build/');
+    }
+
+    // public function enqueueEntryPoint($name, $entryBuildPath) {
+        
+
+
+
+    //     $assets  = include $assetPath;
+    //     $handleName = 'block-scripts-' . $name;
+
+    //     wp_enqueue_script(
+    //         $handleName,
+    //         get_template_directory_uri() . '/blocks/build/' . $name . '/index.js',
+    //         $assets['dependencies'],
+    //         $assets['version'],
+    //         ['in_footer' => true]
+    //     );
+
+    //     if (file_exists($entryBuildPath . '/style-index.css')) {
+    //         wp_enqueue_style(
+    //             $handleName,
+    //             get_template_directory_uri() . '/blocks/build/' . $name . '/style-index.css',
+    //             ['wp-components'],
+    //             $assets['version']
+    //         );
+    //     }
+
+    //     wp_set_script_translations(
+    //         $handleName,
+    //         'offbeatwp',
+    //         get_template_directory() . '/languages'
+    //     );  
+    // }
 }
