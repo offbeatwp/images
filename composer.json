@@ -1,0 +1,17 @@
+{
+    "name": "offbeatwp/image",
+    "description": "Responsive images with focalpoints generate on demand",
+    "type": "offbeatwp-service",
+    "autoload": {
+        "psr-4": {
+            "OffbeatWP\\Images\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Chris Schrijver",
+            "email": "chris@opvollegrond.nl"
+        }
+    ],
+    "require": {}
+}
