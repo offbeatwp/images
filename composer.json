@@ -1,5 +1,5 @@
 {
-    "name": "offbeatwp/image",
+    "name": "offbeatwp/images",
     "description": "Responsive images with focalpoints generate on demand",
     "type": "offbeatwp-service",
     "autoload": {
