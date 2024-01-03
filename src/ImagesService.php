@@ -10,7 +10,7 @@ use OffbeatWP\Services\AbstractService;
 final class ImagesService extends AbstractService
 {
     public const UPLOAD_FOLDER = 'odi';
-    protected $focalPointUpdates = [];
+    protected array $focalPointUpdates = [];
 
     public function register(View $view): void
     {
@@ -83,11 +83,8 @@ final class ImagesService extends AbstractService
 
             $uploadDir = $this->getUploadDir();
 
-            
-            if (
-                !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
-                strpos($imageSrc, $uploadDir['url']) === false // The url must be a ODI url to continue
-            ) {
+            // If the no uploaddir for on demand images or the url is not an ODI url, there is no point to continue;
+            if (!$uploadDir || strpos($imageSrc, $uploadDir['url']) === false) {
                 return $dimensions; 
             }
 
@@ -178,7 +175,7 @@ final class ImagesService extends AbstractService
     }
 
     /** @return array{width: int, height: int, path: string, url: string}|null */
-    public function getImage(int $attachmentId, string $size)
+    public function getImage(int $attachmentId, string $size): ?array
     {
         $meta = wp_get_attachment_metadata($attachmentId);
 
@@ -243,7 +240,8 @@ final class ImagesService extends AbstractService
         ];
     }
 
-    public function generateImage(int $attachmentId, array $size, string $destinationPath)
+    /** @return array{path: string, file: string, width: int, height: int, mime-type: string, filesize: int}|null */
+    public function generateImage(int $attachmentId, array $size, string $destinationPath): ?array
     {
         $originalPath = wp_get_original_image_path($attachmentId);
 
@@ -258,10 +256,7 @@ final class ImagesService extends AbstractService
 
         $originalSize = $imageEditor->get_size();
 
-        if (
-            $originalSize['width'] < $size['width'] ||
-            $originalSize['height'] < $size['height']
-        ) {
+        if ($originalSize['width'] < $size['width'] || $originalSize['height'] < $size['height']) {
             return null;
         }
 
@@ -315,6 +310,11 @@ final class ImagesService extends AbstractService
             $imageEditor->crop((int)$src_x, (int)$src_y, (int)$src_w, (int)$src_h, (int)$dst_w, (int)$dst_h);
             $savedImage = $imageEditor->save($destinationPath);
 
+            if (is_wp_error($savedImage)) {
+                trigger_error($savedImage->get_error_message(), E_USER_WARNING);
+                return null;
+            }
+
             return $savedImage;
         }
 
@@ -359,8 +359,6 @@ final class ImagesService extends AbstractService
     }
 
     /* Stuff for focal point selector */
-
-
     public function initFocalPoint()
     {
         add_action('attachment_submitbox_misc_actions', [$this, 'addButtonToMediaEditPage'], 99);
@@ -392,17 +390,19 @@ final class ImagesService extends AbstractService
         });
     }
 
-    public function watchFocalPointChanges($metaId, $postId, $metaKey)
+    /**
+     * @param int $metaId
+     * @param int $postId
+     * @param string $metaKey
+     */
+    public function watchFocalPointChanges($metaId, $postId, $metaKey): void
     {
-        if (
-            get_post_type($postId) === 'attachment' &&
-            in_array($metaKey, ['focalpoint_x', 'focalpoint_y'])
-        ) {
+        if (get_post_type($postId) === 'attachment' && in_array($metaKey, ['focalpoint_x', 'focalpoint_y'])) {
             $this->focalPointUpdates[] = $postId;
         }
     }
 
-    public function addButtonToMediaEditPage()
+    public function addButtonToMediaEditPage(): void
     {
         global $post;
 
@@ -416,7 +416,12 @@ final class ImagesService extends AbstractService
         echo '</div>';
     }
 
-    public function addButtonToEditMediaModalFieldsArea($form_fields, $post)
+    /**
+     * @param mixed[] $form_fields
+     * @param \WP_Post $post
+     * @return mixed[]
+     */
+    public function addButtonToEditMediaModalFieldsArea($form_fields, $post): array
     {
         // @TODO: Enable later
         // if ( ! current_user_can( $this->capability ) || ! $this->is_regeneratable( $post ) ) {
@@ -434,7 +439,8 @@ final class ImagesService extends AbstractService
         return $form_fields;
     }
 
-    public function getImageInfoForFocalPointTriggerButton($post)
+    /** @return array{id: int, url: string|false, focalpoint_x: mixed, focalpoint_y: mixed} */
+    public function getImageInfoForFocalPointTriggerButton(object $post): array
     {
         return [
             'id' => $post->ID,
@@ -445,17 +451,16 @@ final class ImagesService extends AbstractService
 
     }
 
-    public function enqueueAdminAssets() {
-        $entryBuildPath = dirname(__FILE__) . '/../build';
+    public function enqueueAdminAssets(): void
+    {
+        $entryBuildPath = __DIR__ . '/../build';
         $assetPath = $entryBuildPath . '/index.asset.php';
 
-        if ( ! file_exists( $assetPath ) ) {
-            throw new Error(
-                esc_html__( 'You need to run `npm run start` or `npm run build` from the package folder first', 'offbeatwp' )
-            );
+        if (!file_exists($assetPath) ) {
+            throw new Error(esc_html__('You need to run `npm run start` or `npm run build` from the package folder first', 'offbeatwp'));
         }
 
-        $assets  = include $assetPath;
+        $assets = include $assetPath;
         $handleName = 'scripts-offbeatwp-images';
 
         wp_enqueue_script(

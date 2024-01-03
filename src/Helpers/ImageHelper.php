@@ -2,17 +2,19 @@
 
 namespace OffbeatWP\Images\Helpers;
 
+use OffbeatWP\Images\ImagesService;
+
 final class ImageHelper
 {
-    protected $service;
+    protected ImagesService $service;
 
-    public function __construct($service)
+    public function __construct(ImagesService $service)
     {  
         $this->service = $service;
     }
 
-    public function generateResponsivePicture(int $attachment, array $sources, $args = []) {
-
+    public function generateResponsivePicture(int $attachment, array $sources, array $args = []): string
+    {
         $sourcesHtml = [];
 
         krsort($sources);
