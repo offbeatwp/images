@@ -232,6 +232,11 @@ final class ImagesService extends AbstractService
             return null;
         }
 
+        if (file_exists($imagePath . '.webp')) {
+            $imageFilename = $imageFilename . '.webp';
+            $imagePath = $imagePath . '.webp';
+        }
+
         return [
             'width' => $imageInfo[0],
             'height' => $imageInfo[1],
