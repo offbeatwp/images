@@ -1,6 +1,6 @@
 <?php
 
-namespace OffbeatWP\Images\Helpers\Hooks;
+namespace OffbeatWP\Images\Hooks;
 
 use OffbeatWP\Hooks\AbstractAction;
 use WP_Post;
@@ -97,7 +97,7 @@ final class FocalPointInitAction extends AbstractAction
     }
 
     public function enqueueAdminAssets() {
-        $entryBuildPath = dirname(__FILE__) . '/../build';
+        $entryBuildPath = dirname(__FILE__) . '/../../build';
         $assetPath = $entryBuildPath . '/index.asset.php';
 
         if ( ! file_exists( $assetPath ) ) {

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Images\Repositories;
+namespace OffbeatWP\Images\Repositories;
 
 use App\Services\Images\Helpers\ImageHelper;
 use WP_Error;

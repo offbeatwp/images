@@ -2,10 +2,10 @@
 
 namespace OffbeatWP\Images;
 
-use Error;
 use OffbeatWP\Images\Helpers\ImageHelper;
 use OffbeatWP\Contracts\View;
-use OffbeatWP\Images\Helpers\Hooks\FocalPointInitAction;
+use OffbeatWP\Images\Hooks\FocalPointInitAction;
+use OffbeatWP\Images\Repositories\ImagesRepository;
 use OffbeatWP\Services\AbstractService;
 
 final class ImagesService extends AbstractService
