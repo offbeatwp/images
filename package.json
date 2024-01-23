@@ -1,7 +1,7 @@
 {
-	"name": "heading-block",
-	"version": "0.1.0",
-	"description": "Enhanced Heading",
+	"name": "offbeatwp-responsive-images",
+	"version": "1.0.0",
+	"description": "Responsive images",
 	"author": "RAoW",
 	"license": "MIT",
 	"main": "build/index.js",
