@@ -275,7 +275,6 @@ final class ImageHelper
             }
 
             // If there is a next breakpoint use that as max-width, otherwise use min-width
-
             if ($nextBreakpoint) {
                 $source['media_query'] = 'max-width: ' . ($nextBreakpoint - 1) . 'px';
             } else {
@@ -352,7 +351,7 @@ final class ImageHelper
         }
 
         $alt = $args['alt'] ?? null;
-        $loading = 'lazy';
+        $loading = $args['loading'] ?? 'lazy';
         $class = 'img-fluid';
         $styles = ['object-fit: cover'];
         $aspectRatio = $args['aspectRatio'] ?? null;
