@@ -275,7 +275,6 @@ final class ImageHelper
             }
 
             // If there is a next breakpoint use that as max-width, otherwise use min-width
-
             if ($nextBreakpoint) {
                 $source['media_query'] = 'max-width: ' . ($nextBreakpoint - 1) . 'px';
             } else {
@@ -351,9 +350,12 @@ final class ImageHelper
             $sourcesHtml[] = '<source srcset="' . implode(', ', $source['srcset']) . '" ' . ($sizesAttribute ? 'sizes="' . $sizesAttribute . '" ' : null) . 'media="(' . $source['media_query'] . ')">';
         }
 
-        $alt = $args['alt'] ?? null;
-        $loading = 'lazy';
-        $class = 'img-fluid';
+        $optionalAttributes = [
+            'loading' => $args['loading'] ?? 'lazy',
+            'alt' => $args['alt'] ?? null,
+            'decoding' => $args['decoding'] ?? null
+        ];
+
         $styles = ['object-fit: cover'];
         $aspectRatio = $args['aspectRatio'] ?? null;
         $className = $args['className'] ?? null;
@@ -372,11 +374,18 @@ final class ImageHelper
             $classNames[] = $className;
         }
 
+        $attribeHtmlString = '';
+        foreach ($optionalAttributes as $key => $value) {
+            if ($value !== null) {
+                $attribeHtmlString .= $key . '="' . $value . '" ';
+            }
+        }
+
         $imageTag = '
             <figure>
                 <picture class="' . implode(' ', $classNames) . '">
                     '. implode("\n", $sourcesHtml) .'
-                    <img src="' . $fallbackImage['url'] . '" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" class="' . $class . '" loading="' . $loading . '" alt="'. $alt .'" style="'. implode('; ', $styles) .'" />
+                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . '"style="'. implode('; ', $styles) .'" />
                 </picture>
                 ' . (!empty($args['caption']) ? '<figcaption><div>' . $args['caption'] . '</div></figcaption>' : '') . '
             </figure>
