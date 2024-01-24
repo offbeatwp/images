@@ -2,7 +2,7 @@
 
 namespace OffbeatWP\Images\Repositories;
 
-use App\Services\Images\Helpers\ImageHelper;
+use OffbeatWP\Images\Helpers\ImageHelper;
 use WP_Error;
 
 final class ImagesRepository
@@ -189,6 +189,7 @@ final class ImagesRepository
      */
     public function generateImage(int $attachmentId, array $size, string $destinationPath): ?array
     {
+        $isCrop = $size['crop'] ?? false;
         $originalPath = wp_get_original_image_path($attachmentId);
 
         if (!$originalPath) {
@@ -212,7 +213,7 @@ final class ImagesRepository
         $focalpointY = get_post_meta($attachmentId, 'focalpoint_y', true);
         if (!is_numeric($focalpointY)) $focalpointY = 0.5;
 
-        if (is_numeric($focalpointX) && is_numeric($focalpointY)) {
+        if ($isCrop) {
             // sanitize and distribute parameters
             $dst_w = (int)$size['width'];
             $dst_h = (int)$size['height'];
