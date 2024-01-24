@@ -2,7 +2,7 @@
 
 namespace OffbeatWP\Images\Repositories;
 
-use App\Services\Images\Helpers\ImageHelper;
+use OffbeatWP\Images\Helpers\ImageHelper;
 use WP_Error;
 
 final class ImagesRepository
@@ -207,10 +207,14 @@ final class ImagesRepository
         }
 
         $focalpointX = get_post_meta($attachmentId, 'focalpoint_x', true);
-        if (!is_numeric($focalpointX)) $focalpointX = 0.5;
+        if (!is_numeric($focalpointX)) {
+            $focalpointX = 0.5;
+        }
 
         $focalpointY = get_post_meta($attachmentId, 'focalpoint_y', true);
-        if (!is_numeric($focalpointY)) $focalpointY = 0.5;
+        if (!is_numeric($focalpointY)) {
+            $focalpointY = 0.5;
+        }
 
         if (is_numeric($focalpointX) && is_numeric($focalpointY)) {
             // sanitize and distribute parameters
