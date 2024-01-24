@@ -218,8 +218,11 @@ final class ImageHelper
 
                     if (!$image) {
                         $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
-                        $srcSet[] = $image['url'] . ' ' . $pixelDensity . 'x';
 
+                        if (!$image) {
+                            trigger_error('Could not get max image (pixel density ' . $pixelDensity . ') for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
+                        }
+                        $srcSet[] = $image['url'] . ' ' . $pixelDensity . 'x';
                         break;
                     }
 
@@ -231,6 +234,10 @@ final class ImageHelper
 
                 if (!$image) {
                     $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+
+                    if (!$image) {
+                        trigger_error('Could not get max image for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
+                    }
                     $srcSet[] = $image['url'] . ' ' . $image['width'] . 'w';
                     break;
                 }
