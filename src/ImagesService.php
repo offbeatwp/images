@@ -146,7 +146,6 @@ final class ImagesService extends AbstractService
             }
 
             $uploadDir = $this->getUploadDir();
-
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;

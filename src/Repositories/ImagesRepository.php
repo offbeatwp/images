@@ -193,11 +193,13 @@ final class ImagesRepository
         $originalPath = wp_get_original_image_path($attachmentId);
 
         if (!$originalPath) {
+            trigger_error('Could not find original path of attachment #' . $attachmentId);
             return null;
         }
 
         $imageEditor = wp_get_image_editor($originalPath);
         if (is_wp_error($imageEditor)) {
+            trigger_error($imageEditor->get_error_message(), E_USER_WARNING);
             return null;
         }
 
@@ -208,10 +210,14 @@ final class ImagesRepository
         }
 
         $focalpointX = get_post_meta($attachmentId, 'focalpoint_x', true);
-        if (!is_numeric($focalpointX)) $focalpointX = 0.5;
+        if (!is_numeric($focalpointX)) {
+            $focalpointX = 0.5;
+        }
 
         $focalpointY = get_post_meta($attachmentId, 'focalpoint_y', true);
-        if (!is_numeric($focalpointY)) $focalpointY = 0.5;
+        if (!is_numeric($focalpointY)) {
+            $focalpointY = 0.5;
+        }
 
         if ($isCrop) {
             // sanitize and distribute parameters
