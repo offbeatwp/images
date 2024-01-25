@@ -34,6 +34,7 @@ final class ImageHelper
     }
 
     /**
+     * @pure
      * @param string[] $sizes
      * @return string[]
      */
@@ -315,6 +316,7 @@ final class ImageHelper
     }
 
     /**
+     * @pure
      * @param string[]|null $sizes
      * @return string|null
      */
@@ -324,12 +326,12 @@ final class ImageHelper
 
         if ($sizes) {
             foreach ($sizes as $breakpoint => $width) {
-                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-                $nextWidth = $sizes[$nextBreakpoint] ?? null;
-
                 if (!$width) {
                     continue;
                 }
+
+                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
+                $nextWidth = $sizes[$nextBreakpoint] ?? null;
 
                 if ($nextBreakpoint && $nextWidth) {
                     $sizesAttributeParts[] = '(max-width: ' . ($nextBreakpoint - 1) . 'px) ' . $width;
@@ -428,6 +430,7 @@ final class ImageHelper
     }
 
     /**
+     * @pure
      * @param string|float|int|null $aspectRatio
      * @return float|int
      */
