@@ -270,8 +270,8 @@ final class ImageHelper
         foreach ($sizes as $breakpoint => $width) {
             $source = ['sizes' => []];
 
-            $nextWidth = $this->getNextValue($sizes, $breakpoint);
             $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
+            $nextWidth = $sizes[$nextBreakpoint] ?? null;
 
             $sourceSizes[$breakpoint] = $width;
 
@@ -325,7 +325,7 @@ final class ImageHelper
         if ($sizes) {
             foreach ($sizes as $breakpoint => $width) {
                 $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-                $nextWidth = $this->getNextValue($sizes, $breakpoint);
+                $nextWidth = $sizes[$nextBreakpoint] ?? null;
 
                 if (!$width) {
                     continue;
@@ -447,6 +447,7 @@ final class ImageHelper
     }
 
     /**
+     * @pure
      * @param string[] $array
      * @param int|string $key
      * @return int|string|null
@@ -461,21 +462,5 @@ final class ImageHelper
         }
 
         return $arrayKeys[$index + 1] ?? null;
-    }
-
-    /**
-     * @param string[] $array
-     * @param int|string $key
-     * @return string|null
-     */
-    protected function getNextValue(array $array, $key): ?string
-    {
-        $nextKey = $this->getNextKey($array, $key);
-
-        if (!$nextKey) {
-            return null;
-        }
-
-        return $array[$nextKey];
     }
 }
