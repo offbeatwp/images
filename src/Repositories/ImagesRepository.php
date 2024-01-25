@@ -35,7 +35,7 @@ final class ImagesRepository
     }
 
     /** @return array{path: string, url: string}|null */
-    public function getUploadDir(string $relativePath = '', bool $create = true): ?array
+    public static function getUploadDir(string $relativePath = '', bool $create = true): ?array
     {
         $wpUploadDir = wp_upload_dir();
 
@@ -113,7 +113,7 @@ final class ImagesRepository
             return null;
         }
 
-        $uploadDir = $this->getUploadDir($imagePathInfo['dirname']);
+        $uploadDir = static::getUploadDir($imagePathInfo['dirname']);
         if (!$uploadDir) {
             return null;
         }
@@ -297,7 +297,7 @@ final class ImagesRepository
             return false;
         }
 
-        $uploadDir = $this->getUploadDir($imagePathInfo['dirname']);
+        $uploadDir = static::getUploadDir($imagePathInfo['dirname']);
         if (!$uploadDir) {
             return false;
         }
