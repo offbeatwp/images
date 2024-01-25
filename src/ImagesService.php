@@ -10,11 +10,10 @@ use OffbeatWP\Services\AbstractService;
 
 final class ImagesService extends AbstractService
 {
-    /** @var class-string[] */
+    /** @var class-string<ImagesRepository>[] */
     public array $bindings = [
         'images' => ImagesRepository::class
     ];
-
 
     public function register(View $view): void
     {
@@ -83,8 +82,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = offbeat('images')->getUploadDir();
-
+            $uploadDir = offbeat('images')::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
@@ -145,7 +143,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = $this->getUploadDir();
+            $uploadDir = ImagesRepository::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
