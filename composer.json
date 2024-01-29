@@ -14,7 +14,6 @@
         }
     ],
     "require": {
-        "offbeatwp/framework": "2.*",
-        "ext-imagick": "*"
+        "offbeatwp/framework": "2.*"
     }
 }
