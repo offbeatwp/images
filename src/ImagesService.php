@@ -82,7 +82,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = ImagesRepository::getUploadDir();
+            $uploadDir = offbeat('images')::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
@@ -143,7 +143,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = ImagesRepository::getUploadDir();
+            $uploadDir = offbeat('images')::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
