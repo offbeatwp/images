@@ -365,11 +365,18 @@ final class ImageHelper
             'decoding' => $args['decoding'] ?? null
         ];
 
-        $styles = ['object-fit: cover'];
+
+        $styles = [];
         $aspectRatio = $args['aspectRatio'] ?? null;
+        $objectFit = $args['objectFit'] ?? 'cover';
+        
         $className = $args['className'] ?? null;
         $link = $args['link'] ?? null;
         $linkTarget = $args['linkTarget'] ?? null;
+
+        if ($objectFit) {
+            $styles[] = 'object-fit: ' . $objectFit;
+        }
 
         if ($aspectRatio) {
             $styles[] = 'aspect-ratio: ' . $aspectRatio;
@@ -394,7 +401,7 @@ final class ImageHelper
             <figure>
                 <picture class="' . implode(' ', $classNames) . '">
                     '. implode("\n", $sourcesHtml) .'
-                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . '"style="'. implode('; ', $styles) .'" />
+                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" />
                 </picture>
                 ' . (!empty($args['caption']) ? '<figcaption><div>' . $args['caption'] . '</div></figcaption>' : '') . '
             </figure>
