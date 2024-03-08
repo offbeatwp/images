@@ -207,7 +207,7 @@ final class ImageHelper
 
         foreach ($imageWidths as $imageWidth) {
             $imageHeight = offbeat('images')->getOriginalImageHeight($attachmentId);
-            $aspectRatio = self::calculateAspectRatio($aspectRatio);
+            $aspectRatio = self::calculateAspectRatio($aspectRatio, $attachmentId);
 
             if ($aspectRatio) {
                 $imageHeight = round($imageWidth / $aspectRatio);
@@ -441,7 +441,7 @@ final class ImageHelper
      * @param string|float|int|null $aspectRatio
      * @return float|int
      */
-    public static function calculateAspectRatio($aspectRatio)
+    public static function calculateAspectRatio($aspectRatio, $attachmentId)
     {
         if (is_float($aspectRatio) || is_int($aspectRatio)) {
             return $aspectRatio;
@@ -451,9 +451,13 @@ final class ImageHelper
             return (int)$matches['widthRatio'] / (int)$matches['heightRatio'];
         }
 
-        return 3 / 2; // @TODO Needs some fixing
+        $originalImageSize = wp_get_attachment_image_src($attachmentId, 'full');
 
-        // throw new InvalidArgumentException('An invalid aspect ratio was provided. Aspect ratio must be a number or a "width/height" string');
+        if (is_array($originalImageSize) && !empty($originalImageSize)) {
+            return intval($originalImageSize[1]) / intval($originalImageSize[2]);
+        }
+        
+        return 3 / 2;
     }
 
     /**
