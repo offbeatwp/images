@@ -157,7 +157,7 @@ final class ImagesRepository
         $maxImageHeight = $this->getOriginalImageHeight($attachmentId);
 
         if ($aspectRatio) {
-            $maxImageHeight = floor($fullImageMeta['width'] / ImageHelper::calculateAspectRatio($aspectRatio));
+            $maxImageHeight = floor($fullImageMeta['width'] / ImageHelper::calculateAspectRatio($aspectRatio, $attachmentId));
 
             if ($maxImageHeight > $fullImageMeta['height']) {
                 $maxImageWidth = floor($fullImageMeta['width'] * ($fullImageMeta['height'] / $maxImageHeight));
