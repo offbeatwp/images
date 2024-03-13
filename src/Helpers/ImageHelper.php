@@ -17,9 +17,9 @@ final class ImageHelper
     {
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachment);
 
-        $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null);
-        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null);
-        $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null);
+        $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
+        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
         if (!$sizes || !is_array($sizes)) {
             $sizes = [0 => '100%'];
