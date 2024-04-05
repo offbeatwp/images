@@ -197,15 +197,9 @@ final class ImagesRepository
             return null;
         }
 
-        $imageEditor = wp_get_image_editor($originalPath);
-        if (is_wp_error($imageEditor)) {
-            trigger_error($imageEditor->get_error_message(), E_USER_WARNING);
-            return null;
-        }
+        list($originalWidth, $originalHeight) = getimagesize($originalPath);
 
-        $originalSize = $imageEditor->get_size();
-
-        if ($originalSize['width'] < $size['width'] || $originalSize['height'] < $size['height']) {
+        if ($originalWidth < $size['width'] || $originalHeight < $size['height']) {
             return null;
         }
 
@@ -219,6 +213,12 @@ final class ImagesRepository
             $focalpointY = 0.5;
         }
 
+        $imageEditor = wp_get_image_editor($originalPath);
+        if (is_wp_error($imageEditor)) {
+            trigger_error($imageEditor->get_error_message(), E_USER_WARNING);
+            return null;
+        }
+
         if ($isCrop) {
             // sanitize and distribute parameters
             $dst_w = (int)$size['width'];
@@ -228,35 +228,35 @@ final class ImagesRepository
 
             // maybe replace empty sizes
             if (!$dst_w) {
-                $dst_w = $originalSize['width'];
+                $dst_w = $originalWidth;
             }
             if (!$dst_h) {
-                $dst_h = $originalSize['height'];
+                $dst_h = $originalHeight;
             }
 
             // calculate cropped image size
-            $src_w = $originalSize['width'];
-            $src_h = $originalSize['height'];
+            $src_w = $originalWidth;
+            $src_h = $originalHeight;
 
-            if ($originalSize['width'] / $originalSize['height'] > $dst_w / $dst_h) {
-                $src_w = round($originalSize['height'] * ($dst_w / $dst_h));
+            if ($originalWidth / $originalHeight > $dst_w / $dst_h) {
+                $src_w = round($originalHeight * ($dst_w / $dst_h));
             } else {
-                $src_h = round($originalSize['width'] * ($dst_h / $dst_w));
+                $src_h = round($originalWidth * ($dst_h / $dst_w));
             }
 
             // calculate focal top left position
-            $src_x = $originalSize['width'] * $focal_x - $src_w * $focal_x;
-            if ($src_x + $src_w > $originalSize['width']) {
-                $src_x += $originalSize['width'] - $src_w - $src_x;
+            $src_x = $originalWidth * $focal_x - $src_w * $focal_x;
+            if ($src_x + $src_w > $originalWidth) {
+                $src_x += $originalWidth - $src_w - $src_x;
             }
             if ($src_x < 0) {
                 $src_x = 0;
             }
             $src_x = round($src_x);
 
-            $src_y = $originalSize['height'] * $focal_y - $src_h * $focal_y;
-            if ($src_y + $src_h > $originalSize['height']) {
-                $src_y += $originalSize['height'] - $src_h - $src_y;
+            $src_y = $originalHeight * $focal_y - $src_h * $focal_y;
+            if ($src_y + $src_h > $originalHeight) {
+                $src_y += $originalHeight - $src_h - $src_y;
             }
             if ($src_y < 0) {
                 $src_y = 0;
