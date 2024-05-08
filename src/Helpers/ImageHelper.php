@@ -401,7 +401,7 @@ final class ImageHelper
             <figure>
                 <picture class="' . implode(' ', $classNames) . '">
                     '. implode("\n", $sourcesHtml) .'
-                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" />
+                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" fetchpriority="' . ($args['fetchPriority'] ?? 'auto')  . '" />
                 </picture>
                 ' . (!empty($args['caption']) ? '<figcaption><div>' . $args['caption'] . '</div></figcaption>' : '') . '
             </figure>
