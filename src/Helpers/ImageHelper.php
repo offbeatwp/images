@@ -18,14 +18,15 @@ final class ImageHelper
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentIds);
 
         $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
-        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
-        if (!$sizes || !is_array($sizes)) {
+        /** @var array<int|string, string> $sizes */
+        $sizes = [];
+        if (!$rawSizes || !is_array($rawSizes)) {
             $sizes = [0 => '100%'];
         }
 
-        /** @var int[]|string[] $sizes */
         $sizes = $this->cleanSizes($sizes);
         $sizes = $this->transformSizes($sizes, $containedMaxWidth);
 
@@ -36,8 +37,8 @@ final class ImageHelper
 
     /**
      * @pure
-     * @param int[]|string[] $sizes
-     * @return int[]|string[]
+     * @param string[] $sizes
+     * @return string[]
      */
     protected function cleanSizes(array $sizes): array
     {
@@ -55,9 +56,9 @@ final class ImageHelper
     }
 
     /**
-     * @param int[]|string[] $sizes
+     * @param string[] $sizes
      * @param string|int|float $containedMaxWidth
-     * @return string[]|int[]|float[]
+     * @return string[]|float[]
      */
     protected function transformSizes(array $sizes, $containedMaxWidth): array
     {
@@ -454,7 +455,7 @@ final class ImageHelper
         $originalImageSize = wp_get_attachment_image_src($attachmentId, 'full');
 
         if (is_array($originalImageSize) && !empty($originalImageSize)) {
-            return intval($originalImageSize[1]) / intval($originalImageSize[2]);
+            return (int)$originalImageSize[1] / (int)$originalImageSize[2];
         }
         
         return 3 / 2;
