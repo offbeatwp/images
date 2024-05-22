@@ -73,7 +73,7 @@ final class ImageHelper
     /**
      * @param string[] $sizes
      * @param string|int|float $containedMaxWidth
-     * @return string[]|float[]
+     * @return string[] An array of strings with pixel values. EG: '42px'
      */
     protected function transformSizes(array $sizes, $containedMaxWidth): array
     {
