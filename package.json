@@ -17,7 +17,8 @@
 		"lint:css": "wp-scripts lint-style",
 		"lint:js": "wp-scripts lint-js",
 		"packages-update": "wp-scripts packages-update",
-		"start": "wp-scripts start --output-path=./build/ --webpack-src-dir=src/scripts"
+		"start": "wp-scripts start --output-path=./build/ --webpack-src-dir=src/scripts",
+		"analyse": "php vendor/bin/phpstan analyse --memory-limit=3G"
 	},
 	"devDependencies": {
 		"@wordpress/i18n": "^4.2.4",

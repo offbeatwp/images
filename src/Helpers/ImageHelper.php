@@ -2,6 +2,8 @@
 
 namespace OffbeatWP\Images\Helpers;
 
+use Error;
+
 final class ImageHelper
 {
     public const MIN_VIEWPORT_WIDTH = 320;
@@ -9,28 +11,30 @@ final class ImageHelper
     public const MAX_VIEWPORT_WIDTH = 2000;
 
     /**
-     * @param int $attachment
+     * @param int $attachmentId
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
      * @return string
      */
-    public function generateResponsiveImage(int $attachment, array $args = []): string
+    public function generateResponsiveImage($attachmentId, array $args = []): string
     {
-        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachment);
+        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
 
         $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
-        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        /** @var array<int|string, string> $rawSizes */
+        $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
-        if (!$sizes || !is_array($sizes)) {
+        $sizes = [];
+        if (!$rawSizes || !is_array($rawSizes)) {
             $sizes = [0 => '100%'];
         }
 
         $sizes = $this->cleanSizes($sizes);
         $sizes = $this->transformSizes($sizes, $containedMaxWidth);
 
-        $sources = $this->generateSources($attachment, $sizes, $aspectRatio ?? null);
+        $sources = $this->generateSources($attachmentId, $sizes, $aspectRatio ?? null);
 
-        return $this->generateResponsiveImageTag($attachment, $sources, $args);
+        return $this->generateResponsiveImageTag($attachmentId, $sources, $args);
     }
 
     /**
@@ -53,10 +57,23 @@ final class ImageHelper
         return $sizes;
     }
 
+    private function getViewportWidth(string $containedMaxWidth): string
+    {
+        $result = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
+            return floor((float)$matches['percentage']) . 'vw';
+        }, $containedMaxWidth);
+
+        if ($result === null) {
+            throw new Error(preg_last_error_msg());
+        }
+
+        return $result;
+    }
+
     /**
      * @param string[] $sizes
      * @param string|int|float $containedMaxWidth
-     * @return string[]
+     * @return string[]|float[]
      */
     protected function transformSizes(array $sizes, $containedMaxWidth): array
     {
@@ -70,13 +87,11 @@ final class ImageHelper
             $containedMaxWidth = '100vw';
         }
 
-        // if the contained max width is percentage convert it to viewport width
+        // if the contained max width is percentage convert it to viewport width, otherwise convert it to an integer
         if (is_numeric($containedMaxWidth)) {
-            $containedMaxWidth = (int)$containedMaxWidth;
+            $convertedMaxWidth = (int)$containedMaxWidth;
         } else {
-            $containedMaxWidth = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
-                return floor((float)$matches['percentage']) . 'vw';
-            }, $containedMaxWidth);
+            $convertedMaxWidth = $this->getViewportWidth($containedMaxWidth);
         }
 
         // Remove all sizes where key is not a number
@@ -97,15 +112,15 @@ final class ImageHelper
                 $percentage = (float)$matches['percentage'];
 
                 // Make calculation when the containedMaxWidth is based on the viewport width
-                if (preg_match('/^(?<viewportWidth>\d+)vw$/', $containedMaxWidth, $matches)) {
+                if (preg_match('/^(?<viewportWidth>\d+)vw$/', $convertedMaxWidth, $matches)) {
                     $imageWidth = floor((int)$matches['viewportWidth'] * ($percentage / 100)) . 'vw';
-                } elseif (is_numeric($containedMaxWidth)) {
+                } elseif (is_numeric($convertedMaxWidth)) {
                     // if breakpoint width is smaller then the contained max width
                     // we add a size width a relative width otherwise an absolute width
-                    if ($breakpointWidth < $containedMaxWidth) {
+                    if ($breakpointWidth < $convertedMaxWidth) {
                         $imageWidth = floor($percentage) . 'vw';
                     } else {
-                        $imageWidth = ceil((int)$containedMaxWidth * ($percentage / 100)) . 'px';
+                        $imageWidth = ceil((int)$convertedMaxWidth * ($percentage / 100)) . 'px';
                     }
                 }
             } elseif (is_numeric($imageSize)) {
@@ -123,14 +138,14 @@ final class ImageHelper
             // 2. If there is no next breakpoint, but we didn't reached the contained max width yet
 
             if (
-                is_int($containedMaxWidth) &&
+                is_int($convertedMaxWidth) &&
                 is_float($percentage) &&
                 (
-                    ($nextBreakpointWidth && $breakpointWidth < $containedMaxWidth && $nextBreakpointWidth > $containedMaxWidth) ||
-                    (!$nextBreakpointWidth && $breakpointWidth < $containedMaxWidth)
+                    ($nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth && $nextBreakpointWidth > $convertedMaxWidth) ||
+                    (!$nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth)
                 )
             ) {
-                $sizesReturn[$containedMaxWidth] = ceil($containedMaxWidth * ($percentage / 100)) . 'px';
+                $sizesReturn[$convertedMaxWidth] = (float)ceil($convertedMaxWidth * ($percentage / 100)) . 'px';
             }
         }
 
@@ -198,7 +213,7 @@ final class ImageHelper
      * @param bool $pixelDensitySrcSet
      * @return string[]
      */
-    public function generateSrcSet(int $attachmentId, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
+    public function generateSrcSet($attachmentId, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
     {
         $srcSet = [];
         $imageModifier = $aspectRatio ? 'c' : '';
@@ -347,7 +362,7 @@ final class ImageHelper
     /**
      * @param int $attachmentId
      * @param array{sizes: string[]|null[], media_query: string, srcset?: string[]}[] $sources
-     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
+     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string} $args
      * @return string
      */
     protected function generateResponsiveImageTag(int $attachmentId, array $sources, array $args): string
@@ -364,7 +379,6 @@ final class ImageHelper
             'alt' => $args['alt'] ?? null,
             'decoding' => $args['decoding'] ?? null
         ];
-
 
         $styles = [];
         $aspectRatio = $args['aspectRatio'] ?? null;
@@ -454,7 +468,7 @@ final class ImageHelper
         $originalImageSize = wp_get_attachment_image_src($attachmentId, 'full');
 
         if (is_array($originalImageSize) && !empty($originalImageSize)) {
-            return intval($originalImageSize[1]) / intval($originalImageSize[2]);
+            return (int)$originalImageSize[1] / (int)$originalImageSize[2];
         }
         
         return 3 / 2;
