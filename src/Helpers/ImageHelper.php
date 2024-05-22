@@ -2,6 +2,8 @@
 
 namespace OffbeatWP\Images\Helpers;
 
+use Error;
+
 final class ImageHelper
 {
     public const MIN_VIEWPORT_WIDTH = 320;
@@ -18,10 +20,10 @@ final class ImageHelper
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
 
         $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
+        /** @var array<int|string, string> $rawSizes */
         $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
-        /** @var array<int|string, string> $sizes */
         $sizes = [];
         if (!$rawSizes || !is_array($rawSizes)) {
             $sizes = [0 => '100%'];
@@ -55,6 +57,19 @@ final class ImageHelper
         return $sizes;
     }
 
+    private function getViewportWidth(string $containedMaxWidth): string
+    {
+        $result = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
+            return floor((float)$matches['percentage']) . 'vw';
+        }, $containedMaxWidth);
+
+        if ($result === null) {
+            throw new Error(preg_last_error_msg());
+        }
+
+        return $result;
+    }
+
     /**
      * @param string[] $sizes
      * @param string|int|float $containedMaxWidth
@@ -72,13 +87,11 @@ final class ImageHelper
             $containedMaxWidth = '100vw';
         }
 
-        // if the contained max width is percentage convert it to viewport width
+        // if the contained max width is percentage convert it to viewport width, otherwise convert it to an integer
         if (is_numeric($containedMaxWidth)) {
             $convertedMaxWidth = (int)$containedMaxWidth;
         } else {
-            $convertedMaxWidth = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
-                return floor((float)$matches['percentage']) . 'vw';
-            }, $containedMaxWidth);
+            $convertedMaxWidth = $this->getViewportWidth($containedMaxWidth);
         }
 
         // Remove all sizes where key is not a number
