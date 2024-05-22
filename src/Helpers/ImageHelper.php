@@ -9,13 +9,13 @@ final class ImageHelper
     public const MAX_VIEWPORT_WIDTH = 2000;
 
     /**
-     * @param int|int[] $attachmentIds
+     * @param int $attachmentId
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
      * @return string
      */
-    public function generateResponsiveImage($attachmentIds, array $args = []): string
+    public function generateResponsiveImage($attachmentId, array $args = []): string
     {
-        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentIds);
+        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
 
         $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
         $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
@@ -30,9 +30,9 @@ final class ImageHelper
         $sizes = $this->cleanSizes($sizes);
         $sizes = $this->transformSizes($sizes, $containedMaxWidth);
 
-        $sources = $this->generateSources($attachmentIds, $sizes, $aspectRatio ?? null);
+        $sources = $this->generateSources($attachmentId, $sizes, $aspectRatio ?? null);
 
-        return $this->generateResponsiveImageTag($attachmentIds, $sources, $args);
+        return $this->generateResponsiveImageTag($attachmentId, $sources, $args);
     }
 
     /**
@@ -194,13 +194,13 @@ final class ImageHelper
     }
 
     /**
-     * @param int|int[] $attachmentIds
+     * @param int $attachmentId
      * @param string[]|float[]|int[]|null[] $sizes
      * @param string|float|int|null $aspectRatio
      * @param bool $pixelDensitySrcSet
      * @return string[]
      */
-    public function generateSrcSet($attachmentIds, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
+    public function generateSrcSet($attachmentId, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
     {
         $srcSet = [];
         $imageModifier = $aspectRatio ? 'c' : '';
@@ -208,8 +208,8 @@ final class ImageHelper
         $imageWidths = $this->calculateImageWidths($sizes);
 
         foreach ($imageWidths as $imageWidth) {
-            $imageHeight = offbeat('images')->getOriginalImageHeight($attachmentIds);
-            $aspectRatio = self::calculateAspectRatio($aspectRatio, $attachmentIds);
+            $imageHeight = offbeat('images')->getOriginalImageHeight($attachmentId);
+            $aspectRatio = self::calculateAspectRatio($aspectRatio, $attachmentId);
 
             if ($aspectRatio) {
                 $imageHeight = round($imageWidth / $aspectRatio);
@@ -217,13 +217,13 @@ final class ImageHelper
 
             if ($pixelDensitySrcSet) {
                 foreach ([1, 2] as $pixelDensity) {
-                    $image = offbeat('images')->getImage($attachmentIds, "*{$imageWidth}x{$imageHeight}{$imageModifier}/{$pixelDensity}x");
+                    $image = offbeat('images')->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}/{$pixelDensity}x");
 
                     if (!$image) {
-                        $image = offbeat('images')->getMaxImage($attachmentIds, $aspectRatio);
+                        $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
 
                         if (!$image) {
-                            trigger_error('Could not get max image (pixel density ' . $pixelDensity . ') for attachment #' . $attachmentIds . ' with ratio ' . $aspectRatio);
+                            trigger_error('Could not get max image (pixel density ' . $pixelDensity . ') for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
                         }
                         $srcSet[] = $image['url'] . ' ' . $pixelDensity . 'x';
                         break;
@@ -233,13 +233,13 @@ final class ImageHelper
                 }
 
             } else {
-                $image = offbeat('images')->getImage($attachmentIds, "*{$imageWidth}x{$imageHeight}{$imageModifier}");
+                $image = offbeat('images')->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}");
 
                 if (!$image) {
-                    $image = offbeat('images')->getMaxImage($attachmentIds, $aspectRatio);
+                    $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
 
                     if (!$image) {
-                        trigger_error('Could not get max image for attachment #' . $attachmentIds . ' with ratio ' . $aspectRatio);
+                        trigger_error('Could not get max image for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
                     }
                     $srcSet[] = $image['url'] . ' ' . $image['width'] . 'w';
                     break;
@@ -253,7 +253,7 @@ final class ImageHelper
             return $srcSet;
         }
 
-        $maxImage = offbeat('images')->getMaxImage($attachmentIds, $aspectRatio);
+        $maxImage = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
         $srcSet[] = $maxImage['url'] . ' ' . $maxImage['width'] . 'w';
 
         return $srcSet;
@@ -347,12 +347,12 @@ final class ImageHelper
     }
 
     /**
-     * @param int|int[] $attachmentIds
+     * @param int $attachmentId
      * @param array{sizes: string[]|null[], media_query: string, srcset?: string[]}[] $sources
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string} $args
      * @return string
      */
-    protected function generateResponsiveImageTag(int $attachmentIds, array $sources, array $args): string
+    protected function generateResponsiveImageTag(int $attachmentId, array $sources, array $args): string
     {
         $sourcesHtml = [];
 
@@ -383,7 +383,7 @@ final class ImageHelper
             $styles[] = 'aspect-ratio: ' . $aspectRatio;
         }
 
-        $fallbackImage = offbeat('images')->getMaxImage($attachmentIds, $aspectRatio);
+        $fallbackImage = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
 
         $classNames = ['wp-block', 'wp-block-offbeatwp-image'];
 
@@ -410,7 +410,7 @@ final class ImageHelper
 
         if ($link) {
             if ($link === 'image') {
-                $link = wp_get_attachment_url($attachmentIds);
+                $link = wp_get_attachment_url($attachmentId);
 
                 if (!$linkTarget) {
                     $linkTarget = '_blank';
@@ -422,7 +422,7 @@ final class ImageHelper
                 'target' => $linkTarget
             ];
 
-            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $attachmentIds, $args);
+            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $attachmentId, $args);
 
             $linkTagAttributes = implode(' ', array_map(function ($key) use ($linkTagAttributes) {
                 if (is_bool($linkTagAttributes[$key])) {
