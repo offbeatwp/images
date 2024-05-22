@@ -57,7 +57,7 @@ final class ImageHelper
     /**
      * @param int[]|string[] $sizes
      * @param string|int|float $containedMaxWidth
-     * @return string[]
+     * @return string[]|int[]|float[]
      */
     protected function transformSizes(array $sizes, $containedMaxWidth): array
     {
@@ -131,7 +131,7 @@ final class ImageHelper
                     (!$nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth)
                 )
             ) {
-                $sizesReturn[$convertedMaxWidth] = ceil($convertedMaxWidth * ($percentage / 100)) . 'px';
+                $sizesReturn[$convertedMaxWidth] = (float)ceil($convertedMaxWidth * ($percentage / 100)) . 'px';
             }
         }
 
