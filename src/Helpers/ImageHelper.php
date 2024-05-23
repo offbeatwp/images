@@ -11,11 +11,7 @@ final class ImageHelper
     public const MAX_WIDTH_INTERVAL = 200;
     public const MAX_VIEWPORT_WIDTH = 2000;
 
-    /**
-     * @param int $attachmentId
-     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
-     * @return string
-     */
+    /** @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args */
     public function generateResponsiveImage(int $attachmentId, array $args = []): string
     {
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
@@ -25,6 +21,12 @@ final class ImageHelper
         $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
+        // If attachmentId is an array with size keys, put it through the sizes filter
+        if (is_array($attachmentId)) {
+            $attachmentId = apply_filters('offbeat/responsiveImage/sizes', $attachmentId, $args);
+        }
+
+        // If return value of sizes is invalid, change it to the default array
         if (!$sizes || !is_array($sizes)) {
             $sizes = [0 => '100%'];
         }
@@ -37,12 +39,10 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
      * @param array<int, string> $sizes
-     * @param string|int|float $containedMaxWidth
      * @return BreakPoint[] An array of strings with pixel values. EG: '42px'
      */
-    protected function generateBreakpoints(int $attachmentId, array $sizes, string|int|float $containedMaxWidth): array
+    protected function generateBreakpoints(int $attachmentId, array $sizes, string|int|float|null $containedMaxWidth): array
     {
         // If there is no 0 size defined we assume a display width of 100%
         if (!isset($sizes[0])) {
@@ -186,13 +186,10 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
      * @param string[]|float[]|int[]|null[] $sizes
-     * @param string|float|int|null $aspectRatio
-     * @param bool $pixelDensitySrcSet
      * @return string[]
      */
-    public function generateSrcSet($attachmentId, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
+    public function generateSrcSet(int $attachmentId, array $sizes, string|float|int|null $aspectRatio = null, bool $pixelDensitySrcSet = false): array
     {
         $srcSet = [];
         $imageModifier = $aspectRatio ? 'c' : '';
@@ -310,9 +307,8 @@ final class ImageHelper
     /**
      * @pure
      * @param string[]|null $sizes
-     * @return string|null
      */
-    protected function generateSizesAttribute(?array $sizes): ?string
+    protected function generateSizesAttribute(?array $sizes)
     {
         $sizesAttributeParts = [];
 
@@ -337,10 +333,8 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
      * @param array{sizes: string[]|null[], media_query: string, srcset?: string[]}[] $sources
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string} $args
-     * @return string
      */
     protected function generateResponsiveImageTag(int $attachmentId, array $sources, array $args): string
     {
@@ -427,12 +421,7 @@ final class ImageHelper
         return $imageTag;
     }
 
-    /**
-     * @pure
-     * @param string|float|int|null $aspectRatio
-     * @return float|int
-     */
-    public static function calculateAspectRatio($aspectRatio, $attachmentId)
+    public static function calculateAspectRatio(string|float|int|null $aspectRatio, int $attachmentId): int|float
     {
         if (is_float($aspectRatio) || is_int($aspectRatio)) {
             return $aspectRatio;
