@@ -3,6 +3,7 @@
 namespace OffbeatWP\Images\Helpers;
 
 use Error;
+use OffbeatWP\Images\Objects\BreakPoint;
 
 final class ImageHelper
 {
@@ -15,54 +16,33 @@ final class ImageHelper
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
      * @return string
      */
-    public function generateResponsiveImage($attachmentId, array $args = []): string
+    public function generateResponsiveImage(int $attachmentId, array $args = []): string
     {
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
 
         $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
-        /** @var array<int|string, string> $rawSizes */
-        $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        /** @var array<int, string> $sizes */
+        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
-        $sizes = [];
-        if (!$rawSizes || !is_array($rawSizes)) {
+        if (!$sizes || !is_array($sizes)) {
             $sizes = [0 => '100%'];
         }
 
-        $sizes = $this->cleanSizes($sizes);
-        $sizes = $this->transformSizes($sizes, $containedMaxWidth);
+        $breakpoints = $this->generateBreakpoints($attachmentId, $sizes, $containedMaxWidth);
 
-        $sources = $this->generateSources($attachmentId, $sizes, $aspectRatio ?? null);
+        $sources = $this->generateSources($breakpoints, $aspectRatio);
 
         return $this->generateResponsiveImageTag($attachmentId, $sources, $args);
     }
 
     /**
-     * Removes consecutive sizes with identical values.
-     * @pure
-     * @param string[] $sizes
-     * @return string[]
-     */
-    protected function cleanSizes(array $sizes): array
-    {
-        $lastImageWidth = null;
-
-        foreach ($sizes as $breakpoint => $imageWidth) {
-            if ($lastImageWidth && $lastImageWidth === $imageWidth) {
-                unset($sizes[$breakpoint]);
-            }
-
-            $lastImageWidth = $imageWidth;
-        }
-
-        return $sizes;
-    }
-    /**
-     * @param string[] $sizes
+     * @param int $attachmentId
+     * @param array<int, string> $sizes
      * @param string|int|float $containedMaxWidth
-     * @return string[] An array of strings with pixel values. EG: '42px'
+     * @return BreakPoint[] An array of strings with pixel values. EG: '42px'
      */
-    protected function transformSizes(array $sizes, $containedMaxWidth): array
+    protected function generateBreakpoints(int $attachmentId, array $sizes, string|int|float $containedMaxWidth): array
     {
         // If there is no 0 size defined we assume a display width of 100%
         if (!isset($sizes[0])) {
@@ -87,7 +67,7 @@ final class ImageHelper
         // Sort sizes by key (breakpoints)
         ksort($sizes);
 
-        $sizesReturn = [];
+        $breakpoints = [];
 
         foreach ($sizes as $breakpointWidth => $imageSize) {
             $percentage = null;
@@ -117,13 +97,12 @@ final class ImageHelper
             }
 
             if ($imageWidth) {
-                $sizesReturn[$breakpointWidth] = $imageWidth;
+                $breakpoints[$breakpointWidth] = new BreakPoint($attachmentId, $imageWidth);
             }
 
             // in two cases we add an extra size:
             // 1. If current breakpoint < contained max width, but next breakpoint is wider
             // 2. If there is no next breakpoint, but we didn't reached the contained max width yet
-
             if (
                 is_int($convertedMaxWidth) &&
                 is_float($percentage) &&
@@ -132,11 +111,11 @@ final class ImageHelper
                     (!$nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth)
                 )
             ) {
-                $sizesReturn[$convertedMaxWidth] = (float)ceil($convertedMaxWidth * ($percentage / 100)) . 'px';
+                $breakpoints[$convertedMaxWidth] = new BreakPoint($attachmentId, ceil($convertedMaxWidth * ($percentage / 100)) . 'px');
             }
         }
 
-        return $sizesReturn;
+        return $breakpoints;
     }
 
     private function getViewportWidth(string $containedMaxWidth): string
@@ -153,12 +132,12 @@ final class ImageHelper
     }
 
     /**
-     * @param string[] $sizes
+     * @param string[] $breakpoints
      * @return float[]|int[]
      */
-    public function calculateImageWidths(array $sizes): array
+    public function calculateImageWidths(array $breakpoints): array
     {
-        if (!$sizes) {
+        if (!$breakpoints) {
             return [];
         }
 
@@ -166,24 +145,24 @@ final class ImageHelper
         $foundImageWidths = [];
         $imageWidths = [];
 
-        foreach ($sizes as $breakpoint => $size) {
-            if (!$size) {
+        foreach ($breakpoints as $breakpointWidth => $breakpoint) {
+            if (!$breakpoint) {
                 continue;
             }
 
-            if (preg_match('/^(?<viewportWidth>\d+)vw$/', $size, $matches)) {
-                $breakpointMinViewportWidth = max($breakpoint, self::MIN_VIEWPORT_WIDTH);
-                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
+            if (preg_match('/^(?<viewportWidth>\d+)vw$/', $breakpoint, $matches)) {
+                $breakpointMinViewportWidth = max($breakpointWidth, self::MIN_VIEWPORT_WIDTH);
+                $nextBreakpointWidth = $this->getNextKey($breakpoints, $breakpointWidth);
 
-                if ($nextBreakpoint) {
-                    $breakpointMaxViewportWidth = $nextBreakpoint - 1;
+                if ($nextBreakpointWidth) {
+                    $breakpointMaxViewportWidth = $nextBreakpointWidth - 1;
                 } else {
                     $breakpointMaxViewportWidth = self::MAX_VIEWPORT_WIDTH;
                 }
 
                 $foundImageWidths[] = (int)($breakpointMinViewportWidth * ((int)$matches['viewportWidth'] / 100));
                 $foundImageWidths[] = (int)($breakpointMaxViewportWidth * ((int)$matches['viewportWidth'] / 100));
-            } elseif (preg_match('/^(?<imageWidth>\d+)px$/', $size, $matches)) {
+            } elseif (preg_match('/^(?<imageWidth>\d+)px$/', $breakpoint, $matches)) {
                 $foundImageWidths[] = (int)$matches['imageWidth'];
             }
         }
@@ -273,27 +252,25 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
-     * @param string[] $sizes
-     * @param string|null $aspectRatio
+     * @param BreakPoint[] $sizes
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
-    protected function generateSources(int $attachmentId, array $sizes, ?string $aspectRatio = null): array
+    protected function generateSources(array $sizes, ?string $aspectRatio): array
     {
         $sources = [];
         $sourceSizes = [];
 
-        foreach ($sizes as $breakpoint => $width) {
+        foreach ($sizes as $breakpoint => $data) {
             $source = ['sizes' => []];
 
             $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-            $nextWidth = $sizes[$nextBreakpoint] ?? null;
+            $nextData = $sizes[$nextBreakpoint] ?? null;
 
-            $sourceSizes[$breakpoint] = $width;
+            $sourceSizes[$breakpoint] = $data->getWidth();
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($nextWidth && str_ends_with($width, 'vw') && str_ends_with($nextWidth, 'vw')) {
+            if ($nextData && str_ends_with($data->getWidth(), 'vw') && str_ends_with($nextData->getWidth(), 'vw')) {
                 continue;
             }
 
@@ -306,13 +283,13 @@ final class ImageHelper
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if (str_ends_with($width, 'vw') && (!$nextWidth || str_ends_with($nextWidth, 'px'))) {
+            if (str_ends_with($data->getWidth(), 'vw') && (!$nextData || str_ends_with($nextData->getWidth(), 'px'))) {
                 if ($nextBreakpoint) {
                     $sourceSizes[$nextBreakpoint] = null;
                 }
 
                 $source['sizes'] = $sourceSizes;
-                $source['srcset'] = $this->generateSrcSet($attachmentId, $sourceSizes, $aspectRatio);
+                $source['srcset'] = $this->generateSrcSet($data->getAttachmentId(), $sourceSizes, $aspectRatio);
 
                 $sources[] = $source;
 
@@ -320,8 +297,8 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if (str_ends_with($width, 'px')) {
-                $source['srcset'] = $this->generateSrcSet($attachmentId, [$width], $aspectRatio, true);
+            if (str_ends_with($data->getWidth(), 'px')) {
+                $source['srcset'] = $this->generateSrcSet($data->getAttachmentId(), [$data->getWidth()], $aspectRatio, true);
 
                 $sources[] = $source;
             }
@@ -474,11 +451,8 @@ final class ImageHelper
         return 3 / 2;
     }
 
-    /**
-     * @pure
-     * @param string[] $array
-     */
-    protected function getNextKey(array $array, int|string $key): int|string|null
+    /** @pure */
+    protected function getNextKey(array $array, int|string $key): int|null
     {
         $arrayKeys = array_keys($array);
         $index = array_search($key, $arrayKeys, true);
