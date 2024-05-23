@@ -38,6 +38,7 @@ final class ImageHelper
     }
 
     /**
+     * Removes consecutive sizes with identical values.
      * @pure
      * @param string[] $sizes
      * @return string[]
@@ -56,20 +57,6 @@ final class ImageHelper
 
         return $sizes;
     }
-
-    private function getViewportWidth(string $containedMaxWidth): string
-    {
-        $result = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
-            return floor((float)$matches['percentage']) . 'vw';
-        }, $containedMaxWidth);
-
-        if ($result === null) {
-            throw new Error(preg_last_error_msg());
-        }
-
-        return $result;
-    }
-
     /**
      * @param string[] $sizes
      * @param string|int|float $containedMaxWidth
@@ -125,7 +112,7 @@ final class ImageHelper
                 }
             } elseif (is_numeric($imageSize)) {
                 $imageWidth = $imageSize . 'px';
-            } elseif (preg_match('/px$/', $imageSize)) {
+            } elseif (str_ends_with($imageSize, 'px')) {
                 $imageWidth = $imageSize;
             }
 
@@ -150,6 +137,19 @@ final class ImageHelper
         }
 
         return $sizesReturn;
+    }
+
+    private function getViewportWidth(string $containedMaxWidth): string
+    {
+        $result = preg_replace_callback('/^(?<percentage>\d+(\.\d+)?)%$/', function ($matches) {
+            return floor((float)$matches['percentage']) . 'vw';
+        }, $containedMaxWidth);
+
+        if ($result === null) {
+            throw new Error(preg_last_error_msg());
+        }
+
+        return $result;
     }
 
     /**
@@ -293,7 +293,7 @@ final class ImageHelper
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($nextWidth && preg_match('/vw$/', $width) && preg_match('/vw$/', $nextWidth)) {
+            if ($nextWidth && str_ends_with($width, 'vw') && str_ends_with($nextWidth, 'vw')) {
                 continue;
             }
 
@@ -306,7 +306,7 @@ final class ImageHelper
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if (preg_match('/vw$/', $width) && (!$nextWidth || preg_match('/px$/', $nextWidth))) {
+            if (str_ends_with($width, 'vw') && (!$nextWidth || str_ends_with($nextWidth, 'px'))) {
                 if ($nextBreakpoint) {
                     $sourceSizes[$nextBreakpoint] = null;
                 }
@@ -320,7 +320,7 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if (preg_match('/px$/', $width)) {
+            if (str_ends_with($width, 'px')) {
                 $source['srcset'] = $this->generateSrcSet($attachmentId, [$width], $aspectRatio, true);
 
                 $sources[] = $source;
@@ -477,10 +477,8 @@ final class ImageHelper
     /**
      * @pure
      * @param string[] $array
-     * @param int|string $key
-     * @return int|string|null
      */
-    protected function getNextKey(array $array, $key)
+    protected function getNextKey(array $array, int|string $key): int|string|null
     {
         $arrayKeys = array_keys($array);
         $index = array_search($key, $arrayKeys, true);
