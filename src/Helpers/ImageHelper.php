@@ -78,15 +78,15 @@ final class ImageHelper
     protected function generateBreakpoints(int $attachmentId, array $imageSizes, string|int $containedMaxWidth): array
     {
         // Remove all sizes where key is not a number
-        $breakpointSizes = array_keys($imageSizes);
+        $breakpointWidths = array_keys($imageSizes);
 
         // Sort sizes by key (breakpoints)
-        ksort($breakpointSizes);
+        sort($breakpointWidths);
 
         $breakpoints = [];
         $imageSize = '100%';
 
-        foreach ($breakpointSizes as $breakpointWidth) {
+        foreach ($breakpointWidths as $breakpointWidth) {
             $nextBreakpointWidth = $this->getNextKey($imageSizes, $breakpointWidth);
 
             if (array_key_exists($breakpointWidth, $imageSizes)) {
