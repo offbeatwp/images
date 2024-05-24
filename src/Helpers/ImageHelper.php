@@ -3,6 +3,7 @@
 namespace OffbeatWP\Images\Helpers;
 
 use Error;
+use InvalidArgumentException;
 use OffbeatWP\Images\Objects\BreakPoint;
 
 final class ImageHelper
@@ -11,8 +12,11 @@ final class ImageHelper
     public const MAX_WIDTH_INTERVAL = 200;
     public const MAX_VIEWPORT_WIDTH = 2000;
 
-    /** @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args */
-    public function generateResponsiveImage(int $attachmentId, array $args = []): string
+    /**
+     * @param int|int[] $attachmentId
+     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
+     */
+    public function generateResponsiveImage(int|array $attachmentId, array $args = []): string
     {
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
 
@@ -24,6 +28,10 @@ final class ImageHelper
         // If attachmentId is an array with size keys, put it through the sizes filter
         if (is_array($attachmentId)) {
             $attachmentId = apply_filters('offbeat/responsiveImage/sizes', $attachmentId, $args);
+
+            if (empty($attachmentId[0])) {
+                throw new InvalidArgumentException('When passing an array of attachmentIDs to generateResponsiveImage, it must contain an ID for a 0px width');
+            }
         }
 
         // If return value of sizes is invalid, change it to the default array
