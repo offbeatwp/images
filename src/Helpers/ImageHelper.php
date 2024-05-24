@@ -39,7 +39,7 @@ final class ImageHelper
             $sizes = [0 => '100%'];
         }
 
-        $breakpoints = $this->generateBreakpoints($attachmentId, $sizes, $containedMaxWidth);
+        $breakpoints = $this->generateBreakpoints($attachmentId, $sizes, $containedMaxWidth ?: '100vw');
 
         $sources = $this->generateSources($breakpoints, $aspectRatio);
 
@@ -50,16 +50,11 @@ final class ImageHelper
      * @param array<int, string> $sizes
      * @return BreakPoint[] An array of strings with pixel values. EG: '42px'
      */
-    protected function generateBreakpoints(int $attachmentId, array $sizes, string|int|float|null $containedMaxWidth): array
+    protected function generateBreakpoints(int $attachmentId, array $sizes, string|int|float $containedMaxWidth): array
     {
         // If there is no 0 size defined we assume a display width of 100%
         if (!isset($sizes[0])) {
             $sizes[0] = '100%';
-        }
-
-        // If there is no contained max width defined we assume a width of 100vw
-        if (!$containedMaxWidth) {
-            $containedMaxWidth = '100vw';
         }
 
         // if the contained max width is percentage convert it to viewport width, otherwise convert it to an integer
