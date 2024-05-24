@@ -29,6 +29,16 @@ final class ImageHelper
             if (empty($attachmentIds[0])) {
                 throw new InvalidArgumentException('When passing an array of attachmentIDs to generateResponsiveImage, it must contain an ID for a 0px width');
             }
+        } else {
+            $attachmentIds = [0 => $attachmentIds];
+        }
+
+        // Filter and sanitize sizes
+        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        if ($sizes && is_array($sizes)) {
+            $sizes = $this->cleanSizes($sizes);
+        } else {
+            $sizes = [0 => '100%'];
         }
 
         // Filter and sanitize contained max width
@@ -41,20 +51,12 @@ final class ImageHelper
             $containedMaxWidth = $this->getViewportWidth($containedMaxWidth);
         }
 
-        // Filter and sanitize sizes
-        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
-        if ($sizes && is_array($sizes)) {
-            $sizes = $this->cleanSizes($sizes);
-        } else {
-            $sizes = [0 => '100%'];
-        }
-
         // Generate image tags
         $breakpoints = $this->generateBreakpoints($attachmentIds, $sizes, $containedMaxWidth);
 
         $sources = $this->generateSources($breakpoints, $aspectRatio);
 
-        return $this->generateResponsiveImageTag($attachmentIds, $sources, $args);
+        return $this->generateResponsiveImageTag($attachmentIds[0], $sources, $args);
     }
 
     /** Removes all non-numeric keys from the passed array and converts all numeric-string keys to integers */
@@ -72,23 +74,30 @@ final class ImageHelper
     }
 
     /**
+     * @param non-empty-array<int, int> $attachmentIds
      * @param array<int, string> $imageSizes
      * @return BreakPoint[] An array of strings with pixel values. EG: '42px'
      */
-    protected function generateBreakpoints(int $attachmentId, array $imageSizes, string|int $containedMaxWidth): array
+    protected function generateBreakpoints(array $attachmentIds, array $imageSizes, string|int $containedMaxWidth): array
     {
-        // Remove all sizes where key is not a number
-        $breakpointWidths = array_keys($imageSizes);
+        // Combine breakpoints of attachmentIds and imageSizes
+        /** @var int[] $breakpointWidths */
+        $breakpointWidths = array_unique([...array_keys($imageSizes), ...array_keys($attachmentIds)]);
 
         // Sort sizes by key (breakpoints)
         sort($breakpointWidths);
 
         $breakpoints = [];
         $imageSize = '100%';
+        $imageId = 0;
 
         foreach ($breakpointWidths as $breakpointWidth) {
             if (array_key_exists($breakpointWidth, $imageSizes)) {
                 $imageSize = $imageSizes[$breakpointWidth];
+            }
+
+            if (array_key_exists($breakpointWidth, $attachmentIds)) {
+                $imageId = $attachmentIds[$breakpointWidth];
             }
 
             $nextBreakpointWidth = $this->getNextKey($imageSizes, $breakpointWidth);
@@ -119,7 +128,7 @@ final class ImageHelper
             }
 
             if ($imageWidth) {
-                $breakpoints[$breakpointWidth] = new BreakPoint($attachmentId, $imageWidth);
+                $breakpoints[$breakpointWidth] = new BreakPoint($imageId, $imageWidth);
             }
 
             // in two cases we add an extra size:
@@ -133,7 +142,7 @@ final class ImageHelper
                     (!$nextBreakpointWidth && $breakpointWidth < $containedMaxWidth)
                 )
             ) {
-                $breakpoints[$containedMaxWidth] = new BreakPoint($attachmentId, ceil($containedMaxWidth * ($percentage / 100)) . 'px');
+                $breakpoints[$containedMaxWidth] = new BreakPoint($imageId, ceil($containedMaxWidth * ($percentage / 100)) . 'px');
             }
         }
 
@@ -356,9 +365,9 @@ final class ImageHelper
 
     /**
      * @param array{sizes: string[]|null[], media_query: string, srcset?: string[]}[] $sources
-     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string} $args
+     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string, objectFit?: string, className?: string, link?: string, linkTarget?: string, decoding?: string} $args
      */
-    protected function generateResponsiveImageTag(int $attachmentId, array $sources, array $args): string
+    protected function generateResponsiveImageTag(int $fallbackAttachmentId, array $sources, array $args): string
     {
         $sourcesHtml = [];
 
@@ -389,7 +398,7 @@ final class ImageHelper
             $styles[] = 'aspect-ratio: ' . $aspectRatio;
         }
 
-        $fallbackImage = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+        $fallbackImage = offbeat('images')->getMaxImage($fallbackAttachmentId, $aspectRatio);
 
         $classNames = ['wp-block', 'wp-block-offbeatwp-image'];
 
@@ -416,7 +425,7 @@ final class ImageHelper
 
         if ($link) {
             if ($link === 'image') {
-                $link = wp_get_attachment_url($attachmentId);
+                $link = wp_get_attachment_url($fallbackAttachmentId);
 
                 if (!$linkTarget) {
                     $linkTarget = '_blank';
@@ -428,7 +437,7 @@ final class ImageHelper
                 'target' => $linkTarget
             ];
 
-            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $attachmentId, $args);
+            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $fallbackAttachmentId, $args);
 
             $linkTagAttributes = implode(' ', array_map(function ($key) use ($linkTagAttributes) {
                 if (is_bool($linkTagAttributes[$key])) {
