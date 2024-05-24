@@ -60,7 +60,7 @@ final class ImageHelper
     }
 
     /** Removes all non-numeric keys from the passed array and converts all numeric-string keys to integers */
-    private function cleanSizes(array $array): array
+    private function cleanSizes(iterable $array): array
     {
         $output = [];
 
