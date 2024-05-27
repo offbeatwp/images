@@ -76,7 +76,7 @@ final class ImageHelper
     /**
      * @param non-empty-array<int, int> $attachmentIds
      * @param array<int, string> $imageSizes
-     * @return BreakPoint[] An array of strings with pixel values. EG: '42px'
+     * @return array<int, BreakPoint> An array of strings with pixel values. EG: '42px'
      */
     protected function generateBreakpoints(array $attachmentIds, array $imageSizes, string|int $containedMaxWidth): array
     {
@@ -280,7 +280,7 @@ final class ImageHelper
     }
 
     /**
-     * @param BreakPoint[] $sizes
+     * @param array<int, BreakPoint> $sizes
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
     protected function generateSources(array $sizes, ?string $aspectRatio): array
@@ -337,23 +337,19 @@ final class ImageHelper
 
     /**
      * @pure
-     * @param string[]|null $sizes
+     * @param array<int, string|null> $sizes
      */
-    protected function generateSizesAttribute(?array $sizes)
+    protected function generateSizesAttribute(array $sizes): ?string
     {
         $sizesAttributeParts = [];
 
-        if ($sizes) {
-            foreach ($sizes as $breakpoint => $width) {
-                if (!$width) {
-                    continue;
-                }
+        foreach ($sizes as $breakpointWidth => $width) {
+            if ($width) {
+                $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
+                $nextWidth = $sizes[$nextBreakpointWidth] ?? null;
 
-                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-                $nextWidth = $sizes[$nextBreakpoint] ?? null;
-
-                if ($nextBreakpoint && $nextWidth) {
-                    $sizesAttributeParts[] = '(max-width: ' . ($nextBreakpoint - 1) . 'px) ' . $width;
+                if ($nextBreakpointWidth && $nextWidth) {
+                    $sizesAttributeParts[] = '(max-width: ' . ($nextBreakpointWidth - 1) . 'px) ' . $width;
                 } else {
                     $sizesAttributeParts[] = $width;
                 }
