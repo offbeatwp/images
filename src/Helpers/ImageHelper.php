@@ -288,36 +288,36 @@ final class ImageHelper
         $sources = [];
         $sourceSizes = [];
 
-        foreach ($sizes as $breakpoint => $data) {
+        foreach ($sizes as $breakpointWidth => $breakpoint) {
             $source = ['sizes' => []];
 
-            $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-            $nextData = $sizes[$nextBreakpoint] ?? null;
+            $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
+            $nextBreakpoint = $sizes[$nextBreakpointWidth] ?? null;
 
-            $sourceSizes[$breakpoint] = $data->getWidth();
+            $sourceSizes[$breakpointWidth] = $breakpoint->getWidth();
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($nextData && str_ends_with($data->getWidth(), 'vw') && str_ends_with($nextData->getWidth(), 'vw')) {
+            if ($nextBreakpoint && str_ends_with($breakpoint->getWidth(), 'vw') && str_ends_with($nextBreakpoint->getWidth(), 'vw')) {
                 continue;
             }
 
             // If there is a next breakpoint use that as max-width, otherwise use min-width
-            if ($nextBreakpoint) {
-                $source['media_query'] = 'max-width: ' . ($nextBreakpoint - 1) . 'px';
+            if ($nextBreakpointWidth) {
+                $source['media_query'] = 'max-width: ' . ($nextBreakpointWidth - 1) . 'px';
             } else {
-                $source['media_query'] = 'min-width: ' . ($breakpoint) . 'px';
+                $source['media_query'] = 'min-width: ' . ($breakpointWidth) . 'px';
             }
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if (str_ends_with($data->getWidth(), 'vw') && (!$nextData || str_ends_with($nextData->getWidth(), 'px'))) {
-                if ($nextBreakpoint) {
-                    $sourceSizes[$nextBreakpoint] = null;
+            if (str_ends_with($breakpoint->getWidth(), 'vw') && (!$nextBreakpoint || str_ends_with($nextBreakpoint->getWidth(), 'px'))) {
+                if ($nextBreakpointWidth) {
+                    $sourceSizes[$nextBreakpointWidth] = null;
                 }
 
                 $source['sizes'] = $sourceSizes;
-                $source['srcset'] = $this->generateSrcSet($data->getAttachmentId(), $sourceSizes, $aspectRatio);
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), $sourceSizes, $aspectRatio);
 
                 $sources[] = $source;
 
@@ -325,8 +325,8 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if (str_ends_with($data->getWidth(), 'px')) {
-                $source['srcset'] = $this->generateSrcSet($data->getAttachmentId(), [$data->getWidth()], $aspectRatio, true);
+            if (str_ends_with($breakpoint->getWidth(), 'px')) {
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), [$breakpoint->getWidth()], $aspectRatio, true);
 
                 $sources[] = $source;
             }
