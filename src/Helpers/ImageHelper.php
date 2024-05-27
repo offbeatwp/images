@@ -74,7 +74,7 @@ final class ImageHelper
     }
 
     /**
-     * @param non-empty-array<int, int> $attachmentIds
+     * @param array<int, int> $attachmentIds
      * @param array<int, string> $imageSizes
      * @return array<int, BreakPoint> An array of strings with pixel values. EG: '42px'
      */
@@ -298,7 +298,7 @@ final class ImageHelper
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($nextBreakpoint && str_ends_with($breakpoint->getWidth(), 'vw') && str_ends_with($nextBreakpoint->getWidth(), 'vw')) {
+            if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && str_ends_with($breakpoint->getWidth(), 'vw') && str_ends_with($nextBreakpoint->getWidth(), 'vw')) {
                 continue;
             }
 
@@ -381,7 +381,7 @@ final class ImageHelper
         $styles = [];
         $aspectRatio = $args['aspectRatio'] ?? null;
         $objectFit = $args['objectFit'] ?? 'cover';
-        
+
         $className = $args['className'] ?? null;
         $link = $args['link'] ?? null;
         $linkTarget = $args['linkTarget'] ?? null;
@@ -463,7 +463,7 @@ final class ImageHelper
         if (is_array($originalImageSize) && !empty($originalImageSize)) {
             return (int)$originalImageSize[1] / (int)$originalImageSize[2];
         }
-        
+
         return 3 / 2;
     }
 
