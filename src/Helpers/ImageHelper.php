@@ -298,7 +298,7 @@ final class ImageHelper
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && str_ends_with($breakpoint->getWidth(), 'vw') && str_ends_with($nextBreakpoint->getWidth(), 'vw')) {
+            if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && $breakpoint->getUnit() === 'vw' && $nextBreakpoint->getUnit() === 'vw') {
                 continue;
             }
 
@@ -311,7 +311,7 @@ final class ImageHelper
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if (str_ends_with($breakpoint->getWidth(), 'vw') && (!$nextBreakpoint || str_ends_with($nextBreakpoint->getWidth(), 'px'))) {
+            if ($breakpoint->getUnit() === 'vw' && (!$nextBreakpoint || $nextBreakpoint->getUnit() === 'px')) {
                 if ($nextBreakpointWidth) {
                     $sourceSizes[$nextBreakpointWidth] = null;
                 }
@@ -325,7 +325,7 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if (str_ends_with($breakpoint->getWidth(), 'px')) {
+            if ($breakpoint->getUnit() === 'px') {
                 $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), [$breakpoint->getWidth()], $aspectRatio, true);
 
                 $sources[] = $source;
