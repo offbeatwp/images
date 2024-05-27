@@ -3,6 +3,8 @@
 namespace OffbeatWP\Images\Helpers;
 
 use Error;
+use InvalidArgumentException;
+use OffbeatWP\Images\Objects\BreakPoint;
 
 final class ImageHelper
 {
@@ -11,50 +13,140 @@ final class ImageHelper
     public const MAX_VIEWPORT_WIDTH = 2000;
 
     /**
-     * @param int $attachmentId
+     * @param int|int[] $attachmentIds
      * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
-     * @return string
      */
-    public function generateResponsiveImage($attachmentId, array $args = []): string
+    public function generateResponsiveImage(int|array $attachmentIds, array $args = []): string
     {
-        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentId);
-
-        $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
-        /** @var array<int|string, string> $rawSizes */
-        $rawSizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        // Filter args and aspectRatio
+        $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentIds);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
 
-        $sizes = [];
-        if (!$rawSizes || !is_array($rawSizes)) {
+        // If attachmentId is an array with size keys, put it through the sizes filter
+        if (is_array($attachmentIds)) {
+            $attachmentIds = $this->cleanSizes(apply_filters('offbeat/responsiveImage/sizes', $attachmentIds, $args));
+
+            if (empty($attachmentIds[0])) {
+                throw new InvalidArgumentException('When passing an array of attachmentIDs to generateResponsiveImage, it must contain an ID for a 0px width');
+            }
+        } else {
+            $attachmentIds = [0 => $attachmentIds];
+        }
+
+        // Filter and sanitize sizes
+        $sizes = apply_filters('offbeat/responsiveImage/sizes', $args['sizes'] ?? null, $args);
+        if ($sizes && is_array($sizes)) {
+            $sizes = $this->cleanSizes($sizes);
+        } else {
             $sizes = [0 => '100%'];
         }
 
-        $sizes = $this->cleanSizes($sizes);
-        $sizes = $this->transformSizes($sizes, $containedMaxWidth);
+        // Filter and sanitize contained max width
+        $containedMaxWidth = apply_filters('offbeat/responsiveImage/containedMaxWidth', $args['containedMaxWidth'] ?? null, $args);
+        if (!$containedMaxWidth) {
+            $containedMaxWidth = '100vw';
+        } elseif (is_numeric($containedMaxWidth)) {
+            $containedMaxWidth = (int)$containedMaxWidth;
+        } else {
+            $containedMaxWidth = $this->getViewportWidth($containedMaxWidth);
+        }
 
-        $sources = $this->generateSources($attachmentId, $sizes, $aspectRatio ?? null);
+        // Generate image tags
+        $breakpoints = $this->generateBreakpoints($attachmentIds, $sizes, $containedMaxWidth);
 
-        return $this->generateResponsiveImageTag($attachmentId, $sources, $args);
+        $sources = $this->generateSources($breakpoints, $aspectRatio);
+
+        return $this->generateResponsiveImageTag($attachmentIds[0], $sources, $args);
+    }
+
+    /** Removes all non-numeric keys from the passed array and converts all numeric-string keys to integers */
+    private function cleanSizes(iterable $array): array
+    {
+        $output = [];
+
+        foreach ($array as $key => $value) {
+            if (is_numeric($key)) {
+                $output[(int)$key] = $value;
+            }
+        }
+
+        return $output;
     }
 
     /**
-     * @pure
-     * @param string[] $sizes
-     * @return string[]
+     * @param array<int, int> $attachmentIds
+     * @param array<int, string> $imageSizes
+     * @return array<int, BreakPoint> An array of strings with pixel values. EG: '42px'
      */
-    protected function cleanSizes(array $sizes): array
+    protected function generateBreakpoints(array $attachmentIds, array $imageSizes, string|int $containedMaxWidth): array
     {
-        $lastImageWidth = null;
+        // Combine breakpoints of attachmentIds and imageSizes
+        /** @var int[] $breakpointWidths */
+        $breakpointWidths = array_unique([...array_keys($imageSizes), ...array_keys($attachmentIds)]);
 
-        foreach ($sizes as $breakpoint => $imageWidth) {
-            if ($lastImageWidth && $lastImageWidth === $imageWidth) {
-                unset($sizes[$breakpoint]);
+        // Sort sizes by key (breakpoints)
+        sort($breakpointWidths);
+
+        $breakpoints = [];
+        $imageSize = '100%';
+        $imageId = 0;
+
+        foreach ($breakpointWidths as $breakpointWidth) {
+            if (array_key_exists($breakpointWidth, $imageSizes)) {
+                $imageSize = $imageSizes[$breakpointWidth];
             }
 
-            $lastImageWidth = $imageWidth;
+            if (array_key_exists($breakpointWidth, $attachmentIds)) {
+                $imageId = $attachmentIds[$breakpointWidth];
+            }
+
+            $nextBreakpointWidth = $this->getNextKey($imageSizes, $breakpointWidth);
+
+            // Check if the size needs to be calculate based on a percentage
+            $percentage = null;
+            $imageWidth = null;
+
+            if (preg_match('/^(?<percentage>\d+(\.\d+)?)%$/', $imageSize, $matches)) {
+                $percentage = (float)$matches['percentage'];
+
+                // Make calculation when the containedMaxWidth is based on the viewport width
+                if (preg_match('/^(?<viewportWidth>\d+)vw$/', $containedMaxWidth, $matches)) {
+                    $imageWidth = floor((int)$matches['viewportWidth'] * ($percentage / 100)) . 'vw';
+                } elseif (is_numeric($containedMaxWidth)) {
+                    // if breakpoint width is smaller then the contained max width
+                    // we add a size width a relative width otherwise an absolute width
+                    if ($breakpointWidth < $containedMaxWidth) {
+                        $imageWidth = floor($percentage) . 'vw';
+                    } else {
+                        $imageWidth = ceil((int)$containedMaxWidth * ($percentage / 100)) . 'px';
+                    }
+                }
+            } elseif (is_numeric($imageSize)) {
+                $imageWidth = $imageSize . 'px';
+            } elseif (str_ends_with($imageSize, 'px')) {
+                $imageWidth = $imageSize;
+            }
+
+            if ($imageWidth) {
+                $breakpoints[$breakpointWidth] = new BreakPoint($imageId, $imageWidth);
+            }
+
+            // in two cases we add an extra size:
+            // 1. If current breakpoint < contained max width, but next breakpoint is wider
+            // 2. If there is no next breakpoint, but we didn't reached the contained max width yet
+            if (
+                is_int($containedMaxWidth) &&
+                is_float($percentage) &&
+                (
+                    ($nextBreakpointWidth && $breakpointWidth < $containedMaxWidth && $nextBreakpointWidth > $containedMaxWidth) ||
+                    (!$nextBreakpointWidth && $breakpointWidth < $containedMaxWidth)
+                )
+            ) {
+                $breakpoints[$containedMaxWidth] = new BreakPoint($imageId, ceil($containedMaxWidth * ($percentage / 100)) . 'px');
+            }
         }
 
-        return $sizes;
+        return $breakpoints;
     }
 
     private function getViewportWidth(string $containedMaxWidth): string
@@ -71,94 +163,12 @@ final class ImageHelper
     }
 
     /**
-     * @param string[] $sizes
-     * @param string|int|float $containedMaxWidth
-     * @return string[]|float[]
-     */
-    protected function transformSizes(array $sizes, $containedMaxWidth): array
-    {
-        // If there is no 0 size defined we assume a display width of 100%
-        if (!isset($sizes[0])) {
-            $sizes[0] = '100%';
-        }
-
-        // If there is no contained max width defined we assume a width of 100vw
-        if (!$containedMaxWidth) {
-            $containedMaxWidth = '100vw';
-        }
-
-        // if the contained max width is percentage convert it to viewport width, otherwise convert it to an integer
-        if (is_numeric($containedMaxWidth)) {
-            $convertedMaxWidth = (int)$containedMaxWidth;
-        } else {
-            $convertedMaxWidth = $this->getViewportWidth($containedMaxWidth);
-        }
-
-        // Remove all sizes where key is not a number
-        $sizes = array_filter($sizes, fn($key) => is_numeric($key), ARRAY_FILTER_USE_KEY);
-
-        // Sort sizes by key (breakpoints)
-        ksort($sizes);
-
-        $sizesReturn = [];
-
-        foreach ($sizes as $breakpointWidth => $imageSize) {
-            $percentage = null;
-            $imageWidth = null;
-            $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
-
-            // Check if the size needs to be calculate based on a percentage
-            if (preg_match('/^(?<percentage>\d+(\.\d+)?)%$/', $imageSize, $matches)) {
-                $percentage = (float)$matches['percentage'];
-
-                // Make calculation when the containedMaxWidth is based on the viewport width
-                if (preg_match('/^(?<viewportWidth>\d+)vw$/', $convertedMaxWidth, $matches)) {
-                    $imageWidth = floor((int)$matches['viewportWidth'] * ($percentage / 100)) . 'vw';
-                } elseif (is_numeric($convertedMaxWidth)) {
-                    // if breakpoint width is smaller then the contained max width
-                    // we add a size width a relative width otherwise an absolute width
-                    if ($breakpointWidth < $convertedMaxWidth) {
-                        $imageWidth = floor($percentage) . 'vw';
-                    } else {
-                        $imageWidth = ceil((int)$convertedMaxWidth * ($percentage / 100)) . 'px';
-                    }
-                }
-            } elseif (is_numeric($imageSize)) {
-                $imageWidth = $imageSize . 'px';
-            } elseif (preg_match('/px$/', $imageSize)) {
-                $imageWidth = $imageSize;
-            }
-
-            if ($imageWidth) {
-                $sizesReturn[$breakpointWidth] = $imageWidth;
-            }
-
-            // in two cases we add an extra size:
-            // 1. If current breakpoint < contained max width, but next breakpoint is wider
-            // 2. If there is no next breakpoint, but we didn't reached the contained max width yet
-
-            if (
-                is_int($convertedMaxWidth) &&
-                is_float($percentage) &&
-                (
-                    ($nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth && $nextBreakpointWidth > $convertedMaxWidth) ||
-                    (!$nextBreakpointWidth && $breakpointWidth < $convertedMaxWidth)
-                )
-            ) {
-                $sizesReturn[$convertedMaxWidth] = (float)ceil($convertedMaxWidth * ($percentage / 100)) . 'px';
-            }
-        }
-
-        return $sizesReturn;
-    }
-
-    /**
-     * @param string[] $sizes
+     * @param string[] $breakpoints
      * @return float[]|int[]
      */
-    public function calculateImageWidths(array $sizes): array
+    public function calculateImageWidths(array $breakpoints): array
     {
-        if (!$sizes) {
+        if (!$breakpoints) {
             return [];
         }
 
@@ -166,24 +176,24 @@ final class ImageHelper
         $foundImageWidths = [];
         $imageWidths = [];
 
-        foreach ($sizes as $breakpoint => $size) {
-            if (!$size) {
+        foreach ($breakpoints as $breakpointWidth => $breakpoint) {
+            if (!$breakpoint) {
                 continue;
             }
 
-            if (preg_match('/^(?<viewportWidth>\d+)vw$/', $size, $matches)) {
-                $breakpointMinViewportWidth = max($breakpoint, self::MIN_VIEWPORT_WIDTH);
-                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
+            if (preg_match('/^(?<viewportWidth>\d+)vw$/', $breakpoint, $matches)) {
+                $breakpointMinViewportWidth = max($breakpointWidth, self::MIN_VIEWPORT_WIDTH);
+                $nextBreakpointWidth = $this->getNextKey($breakpoints, $breakpointWidth);
 
-                if ($nextBreakpoint) {
-                    $breakpointMaxViewportWidth = $nextBreakpoint - 1;
+                if ($nextBreakpointWidth) {
+                    $breakpointMaxViewportWidth = $nextBreakpointWidth - 1;
                 } else {
                     $breakpointMaxViewportWidth = self::MAX_VIEWPORT_WIDTH;
                 }
 
                 $foundImageWidths[] = (int)($breakpointMinViewportWidth * ((int)$matches['viewportWidth'] / 100));
                 $foundImageWidths[] = (int)($breakpointMaxViewportWidth * ((int)$matches['viewportWidth'] / 100));
-            } elseif (preg_match('/^(?<imageWidth>\d+)px$/', $size, $matches)) {
+            } elseif (preg_match('/^(?<imageWidth>\d+)px$/', $breakpoint, $matches)) {
                 $foundImageWidths[] = (int)$matches['imageWidth'];
             }
         }
@@ -207,13 +217,10 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
      * @param string[]|float[]|int[]|null[] $sizes
-     * @param string|float|int|null $aspectRatio
-     * @param bool $pixelDensitySrcSet
      * @return string[]
      */
-    public function generateSrcSet($attachmentId, array $sizes, $aspectRatio = null, bool $pixelDensitySrcSet = false): array
+    public function generateSrcSet(int $attachmentId, array $sizes, string|float|int|null $aspectRatio = null, bool $pixelDensitySrcSet = false): array
     {
         $srcSet = [];
         $imageModifier = $aspectRatio ? 'c' : '';
@@ -273,46 +280,44 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
-     * @param string[] $sizes
-     * @param string|null $aspectRatio
+     * @param array<int, BreakPoint> $sizes
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
-    protected function generateSources(int $attachmentId, array $sizes, ?string $aspectRatio = null): array
+    protected function generateSources(array $sizes, ?string $aspectRatio): array
     {
         $sources = [];
         $sourceSizes = [];
 
-        foreach ($sizes as $breakpoint => $width) {
+        foreach ($sizes as $breakpointWidth => $breakpoint) {
             $source = ['sizes' => []];
 
-            $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-            $nextWidth = $sizes[$nextBreakpoint] ?? null;
+            $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
+            $nextBreakpoint = $sizes[$nextBreakpointWidth] ?? null;
 
-            $sourceSizes[$breakpoint] = $width;
+            $sourceSizes[$breakpointWidth] = $breakpoint->getWidth();
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($nextWidth && preg_match('/vw$/', $width) && preg_match('/vw$/', $nextWidth)) {
+            if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && $breakpoint->getUnit() === 'vw' && $nextBreakpoint->getUnit() === 'vw') {
                 continue;
             }
 
             // If there is a next breakpoint use that as max-width, otherwise use min-width
-            if ($nextBreakpoint) {
-                $source['media_query'] = 'max-width: ' . ($nextBreakpoint - 1) . 'px';
+            if ($nextBreakpointWidth) {
+                $source['media_query'] = 'max-width: ' . ($nextBreakpointWidth - 1) . 'px';
             } else {
-                $source['media_query'] = 'min-width: ' . ($breakpoint) . 'px';
+                $source['media_query'] = 'min-width: ' . ($breakpointWidth) . 'px';
             }
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if (preg_match('/vw$/', $width) && (!$nextWidth || preg_match('/px$/', $nextWidth))) {
-                if ($nextBreakpoint) {
-                    $sourceSizes[$nextBreakpoint] = null;
+            if ($breakpoint->getUnit() === 'vw' && (!$nextBreakpoint || $nextBreakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId())) {
+                if ($nextBreakpointWidth) {
+                    $sourceSizes[$nextBreakpointWidth] = null;
                 }
 
                 $source['sizes'] = $sourceSizes;
-                $source['srcset'] = $this->generateSrcSet($attachmentId, $sourceSizes, $aspectRatio);
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), $sourceSizes, $aspectRatio);
 
                 $sources[] = $source;
 
@@ -320,8 +325,8 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if (preg_match('/px$/', $width)) {
-                $source['srcset'] = $this->generateSrcSet($attachmentId, [$width], $aspectRatio, true);
+            if ($breakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId()) {
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), [$breakpoint->getWidth()], $aspectRatio, true);
 
                 $sources[] = $source;
             }
@@ -332,24 +337,19 @@ final class ImageHelper
 
     /**
      * @pure
-     * @param string[]|null $sizes
-     * @return string|null
+     * @param array<int, string|null> $sizes
      */
-    protected function generateSizesAttribute(?array $sizes): ?string
+    protected function generateSizesAttribute(array $sizes): ?string
     {
         $sizesAttributeParts = [];
 
-        if ($sizes) {
-            foreach ($sizes as $breakpoint => $width) {
-                if (!$width) {
-                    continue;
-                }
+        foreach ($sizes as $breakpointWidth => $width) {
+            if ($width) {
+                $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
+                $nextWidth = $sizes[$nextBreakpointWidth] ?? null;
 
-                $nextBreakpoint = $this->getNextKey($sizes, $breakpoint);
-                $nextWidth = $sizes[$nextBreakpoint] ?? null;
-
-                if ($nextBreakpoint && $nextWidth) {
-                    $sizesAttributeParts[] = '(max-width: ' . ($nextBreakpoint - 1) . 'px) ' . $width;
+                if ($nextBreakpointWidth && $nextWidth) {
+                    $sizesAttributeParts[] = '(max-width: ' . ($nextBreakpointWidth - 1) . 'px) ' . $width;
                 } else {
                     $sizesAttributeParts[] = $width;
                 }
@@ -360,12 +360,10 @@ final class ImageHelper
     }
 
     /**
-     * @param int $attachmentId
      * @param array{sizes: string[]|null[], media_query: string, srcset?: string[]}[] $sources
-     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string} $args
-     * @return string
+     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float, caption?: string, objectFit?: string, className?: string, link?: string, linkTarget?: string, decoding?: string} $args
      */
-    protected function generateResponsiveImageTag(int $attachmentId, array $sources, array $args): string
+    protected function generateResponsiveImageTag(int $fallbackAttachmentId, array $sources, array $args): string
     {
         $sourcesHtml = [];
 
@@ -383,7 +381,7 @@ final class ImageHelper
         $styles = [];
         $aspectRatio = $args['aspectRatio'] ?? null;
         $objectFit = $args['objectFit'] ?? 'cover';
-        
+
         $className = $args['className'] ?? null;
         $link = $args['link'] ?? null;
         $linkTarget = $args['linkTarget'] ?? null;
@@ -396,7 +394,7 @@ final class ImageHelper
             $styles[] = 'aspect-ratio: ' . $aspectRatio;
         }
 
-        $fallbackImage = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+        $fallbackImage = offbeat('images')->getMaxImage($fallbackAttachmentId, $aspectRatio);
 
         $classNames = ['wp-block', 'wp-block-offbeatwp-image'];
 
@@ -423,7 +421,7 @@ final class ImageHelper
 
         if ($link) {
             if ($link === 'image') {
-                $link = wp_get_attachment_url($attachmentId);
+                $link = wp_get_attachment_url($fallbackAttachmentId);
 
                 if (!$linkTarget) {
                     $linkTarget = '_blank';
@@ -435,7 +433,7 @@ final class ImageHelper
                 'target' => $linkTarget
             ];
 
-            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $attachmentId, $args);
+            $linkTagAttributes = apply_filters('offbeat/responsiveImage/linkTagAttributes', $linkTagAttributes, $fallbackAttachmentId, $args);
 
             $linkTagAttributes = implode(' ', array_map(function ($key) use ($linkTagAttributes) {
                 if (is_bool($linkTagAttributes[$key])) {
@@ -450,12 +448,7 @@ final class ImageHelper
         return $imageTag;
     }
 
-    /**
-     * @pure
-     * @param string|float|int|null $aspectRatio
-     * @return float|int
-     */
-    public static function calculateAspectRatio($aspectRatio, $attachmentId)
+    public static function calculateAspectRatio(string|float|int|null $aspectRatio, int $attachmentId): int|float
     {
         if (is_float($aspectRatio) || is_int($aspectRatio)) {
             return $aspectRatio;
@@ -470,17 +463,12 @@ final class ImageHelper
         if (is_array($originalImageSize) && !empty($originalImageSize)) {
             return (int)$originalImageSize[1] / (int)$originalImageSize[2];
         }
-        
+
         return 3 / 2;
     }
 
-    /**
-     * @pure
-     * @param string[] $array
-     * @param int|string $key
-     * @return int|string|null
-     */
-    protected function getNextKey(array $array, $key)
+    /** @pure */
+    protected function getNextKey(array $array, int|string $key): int|null
     {
         $arrayKeys = array_keys($array);
         $index = array_search($key, $arrayKeys, true);
