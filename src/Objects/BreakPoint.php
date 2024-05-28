@@ -6,18 +6,13 @@ final class BreakPoint
 {
     private int $attachmentId;
     private string $width;
-    private ?string $unit = null;
+    private string $unit;
 
     public function __construct(int $attachmentId, string $width)
     {
         $this->attachmentId = $attachmentId;
         $this->width = $width;
-
-        if (str_ends_with($this->width, 'px')) {
-            $this->unit = 'px';
-        } elseif (str_ends_with($this->width, 'vw')) {
-            $this->unit = 'vw';
-        }
+        $this->unit = str_ends_with($this->width, 'vw') ? 'vw' : 'px';
     }
 
     public function getAttachmentId(): int
@@ -30,8 +25,8 @@ final class BreakPoint
         return $this->width;
     }
 
-    /** @return 'px'|'vw'|null */
-    public function getUnit(): ?string
+    /** @return 'px'|'vw' */
+    public function getUnit(): string
     {
         return $this->unit;
     }

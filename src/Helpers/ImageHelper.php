@@ -280,19 +280,19 @@ final class ImageHelper
     }
 
     /**
-     * @param array<int, BreakPoint> $sizes
+     * @param array<int, BreakPoint> $breakpoints
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
-    protected function generateSources(array $sizes, ?string $aspectRatio): array
+    protected function generateSources(array $breakpoints, ?string $aspectRatio): array
     {
         $sources = [];
         $sourceSizes = [];
 
-        foreach ($sizes as $breakpointWidth => $breakpoint) {
+        foreach ($breakpoints as $breakpointWidth => $breakpoint) {
             $source = ['sizes' => []];
 
-            $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
-            $nextBreakpoint = $sizes[$nextBreakpointWidth] ?? null;
+            $nextBreakpointWidth = $this->getNextKey($breakpoints, $breakpointWidth);
+            $nextBreakpoint = $breakpoints[$nextBreakpointWidth] ?? null;
 
             $sourceSizes[$breakpointWidth] = $breakpoint->getWidth();
 
@@ -342,9 +342,10 @@ final class ImageHelper
     protected function generateSizesAttribute(array $sizes): ?string
     {
         $sizesAttributeParts = [];
+        $prevWidth = null;
 
         foreach ($sizes as $breakpointWidth => $width) {
-            if ($width) {
+            if ($width && $width !== $prevWidth) {
                 $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
                 $nextWidth = $sizes[$nextBreakpointWidth] ?? null;
 
@@ -353,6 +354,8 @@ final class ImageHelper
                 } else {
                     $sizesAttributeParts[] = $width;
                 }
+
+                $prevWidth = $width;
             }
         }
 
@@ -460,7 +463,7 @@ final class ImageHelper
 
         $originalImageSize = wp_get_attachment_image_src($attachmentId, 'full');
 
-        if (is_array($originalImageSize) && !empty($originalImageSize)) {
+        if (is_array($originalImageSize) && $originalImageSize) {
             return (int)$originalImageSize[1] / (int)$originalImageSize[2];
         }
 
