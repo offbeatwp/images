@@ -342,9 +342,10 @@ final class ImageHelper
     protected function generateSizesAttribute(array $sizes): ?string
     {
         $sizesAttributeParts = [];
+        $prevWidth = null;
 
         foreach ($sizes as $breakpointWidth => $width) {
-            if ($width) {
+            if ($width && $width !== $prevWidth) {
                 $nextBreakpointWidth = $this->getNextKey($sizes, $breakpointWidth);
                 $nextWidth = $sizes[$nextBreakpointWidth] ?? null;
 
@@ -353,6 +354,8 @@ final class ImageHelper
                 } else {
                     $sizesAttributeParts[] = $width;
                 }
+
+                $prevWidth = $width;
             }
         }
 
