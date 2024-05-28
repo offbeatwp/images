@@ -14,7 +14,7 @@
         }
     ],
     "require": {
-        "offbeatwp/framework": "^2"
+        "offbeatwp/framework": ">=2"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.11",
