@@ -18,6 +18,13 @@ final class ImageHelper
      */
     public function generateResponsiveImage(int|array $attachmentIds, array $args = []): string
     {
+        $primaryAttachmentId = is_array($attachmentIds) ? array_values($attachmentIds)[0] : $attachmentIds;
+
+        // If image is an vector image we don't need responsive images
+        if (str_contains(get_post_mime_type($primaryAttachmentId), 'svg')) {
+            return wp_get_attachment_image($primaryAttachmentId, 'full', false, ['class' => $args['class'] ?? null, 'loading' => $args['class'] ?? null]);
+        }
+        
         // Filter args and aspectRatio
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentIds);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
