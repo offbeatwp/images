@@ -7,12 +7,14 @@ final class BreakPoint
     private int $attachmentId;
     private string $width;
     private string $unit;
+    private $aspectRatio;
 
-    public function __construct(int $attachmentId, string $width)
+    public function __construct(int $attachmentId, string $width, $aspectRatio = null)
     {
         $this->attachmentId = $attachmentId;
         $this->width = $width;
         $this->unit = str_ends_with($this->width, 'vw') ? 'vw' : 'px';
+        $this->aspectRatio = $aspectRatio;
     }
 
     public function getAttachmentId(): int
@@ -29,5 +31,9 @@ final class BreakPoint
     public function getUnit(): string
     {
         return $this->unit;
+    }
+    public function getAspectRatio(): ?string
+    {
+        return $this->aspectRatio;
     }
 }

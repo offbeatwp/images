@@ -14,7 +14,7 @@ final class ImageHelper
 
     /**
      * @param int|int[] $attachmentIds
-     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string, lightbox?: bool, containedMaxWidth?: string|int|float} $args
+     * @param array{url?: string, class?: string, loading?: string, alt?: string, sizes?: string[], aspectRatio?: string|array, lightbox?: bool, containedMaxWidth?: string|int|float} $args
      */
     public function generateResponsiveImage(int|array $attachmentIds, array $args = []): string
     {
@@ -59,7 +59,7 @@ final class ImageHelper
         }
 
         // Generate image tags
-        $breakpoints = $this->generateBreakpoints($attachmentIds, $sizes, $containedMaxWidth);
+        $breakpoints = $this->generateBreakpoints($attachmentIds, $sizes, $containedMaxWidth, !is_array($aspectRatio) ? [0 => $aspectRatio] : $aspectRatio);
 
         $sources = $this->generateSources($breakpoints, $aspectRatio);
 
@@ -85,11 +85,11 @@ final class ImageHelper
      * @param array<int, string> $imageSizes
      * @return array<int, BreakPoint> An array of strings with pixel values. EG: '42px'
      */
-    protected function generateBreakpoints(array $attachmentIds, array $imageSizes, string|int $containedMaxWidth): array
+    protected function generateBreakpoints(array $attachmentIds, array $imageSizes, string|int $containedMaxWidth, array $aspectRatios): array
     {
         // Combine breakpoints of attachmentIds and imageSizes
         /** @var int[] $breakpointWidths */
-        $breakpointWidths = array_unique([...array_keys($imageSizes), ...array_keys($attachmentIds)]);
+        $breakpointWidths = array_unique([...array_keys($imageSizes), ...array_keys($attachmentIds), ...array_keys($aspectRatios)]);
 
         // Sort sizes by key (breakpoints)
         sort($breakpointWidths);
@@ -97,6 +97,7 @@ final class ImageHelper
         $breakpoints = [];
         $imageSize = '100%';
         $imageId = 0;
+        $aspectRatio = null;
 
         foreach ($breakpointWidths as $breakpointWidth) {
             if (array_key_exists($breakpointWidth, $imageSizes)) {
@@ -105,6 +106,10 @@ final class ImageHelper
 
             if (array_key_exists($breakpointWidth, $attachmentIds)) {
                 $imageId = $attachmentIds[$breakpointWidth];
+            }
+
+            if (array_key_exists($breakpointWidth, $aspectRatios)) {
+                $aspectRatio = $aspectRatios[$breakpointWidth];
             }
 
             $nextBreakpointWidth = $this->getNextKey($imageSizes, $breakpointWidth);
@@ -135,7 +140,7 @@ final class ImageHelper
             }
 
             if ($imageWidth) {
-                $breakpoints[$breakpointWidth] = new BreakPoint($imageId, $imageWidth);
+                $breakpoints[$breakpointWidth] = new BreakPoint($imageId, $imageWidth, $aspectRatio);
             }
 
             // in two cases we add an extra size:
@@ -149,7 +154,7 @@ final class ImageHelper
                     (!$nextBreakpointWidth && $breakpointWidth < $containedMaxWidth)
                 )
             ) {
-                $breakpoints[$containedMaxWidth] = new BreakPoint($imageId, ceil($containedMaxWidth * ($percentage / 100)) . 'px');
+                $breakpoints[$containedMaxWidth] = new BreakPoint($imageId, ceil($containedMaxWidth * ($percentage / 100)) . 'px', $aspectRatio);
             }
         }
 
@@ -288,9 +293,10 @@ final class ImageHelper
 
     /**
      * @param array<int, BreakPoint> $breakpoints
+     * @param ?string|array $aspectRatio
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
-    protected function generateSources(array $breakpoints, ?string $aspectRatio): array
+    protected function generateSources(array $breakpoints, $aspectRatio): array
     {
         $sources = [];
         $sourceSizes = [];
@@ -305,9 +311,9 @@ final class ImageHelper
 
             // We are going to group the relative sources in source. So if current and next is
             // a relative width, we're going to skip it.
-            if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && $breakpoint->getUnit() === 'vw' && $nextBreakpoint->getUnit() === 'vw') {
-                continue;
-            }
+            // if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && $breakpoint->getUnit() === 'vw' && $nextBreakpoint->getUnit() === 'vw') {
+            //     continue;
+            // }
 
             // If there is a next breakpoint use that as max-width, otherwise use min-width
             if ($nextBreakpointWidth) {
@@ -318,13 +324,16 @@ final class ImageHelper
 
             // If current width is relative, and the next one is absolute (or there is no next)
             // we going to define the source.
-            if ($breakpoint->getUnit() === 'vw' && (!$nextBreakpoint || $nextBreakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId())) {
+
+            $srcsetAspectRatio = $breakpoint->getAspectRatio() ?? (is_array($aspectRatio) ? end($aspectRatio) : $aspectRatio);
+
+            if ($breakpoint->getUnit() === 'vw' && (!$nextBreakpoint || $nextBreakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId() || $breakpoint->getAspectRatio() !== $nextBreakpoint->getAspectRatio())) {
                 if ($nextBreakpointWidth) {
                     $sourceSizes[$nextBreakpointWidth] = null;
                 }
 
                 $source['sizes'] = $sourceSizes;
-                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), $sourceSizes, $aspectRatio);
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), $sourceSizes, $srcsetAspectRatio);
 
                 $sources[] = $source;
 
@@ -332,14 +341,20 @@ final class ImageHelper
             }
 
             // Absolute definitions will width a more strict srcset (defining pixel density images)
-            if ($breakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId()) {
-                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), [$breakpoint->getWidth()], $aspectRatio, true);
+            if ($breakpoint->getUnit() === 'px' || $breakpoint->getAttachmentId() !== $nextBreakpoint->getAttachmentId() || $breakpoint->getAspectRatio() !== $nextBreakpoint->getAspectRatio()) {
+                $source['srcset'] = $this->generateSrcSet($breakpoint->getAttachmentId(), [$breakpoint->getWidth()], $srcsetAspectRatio, true);
 
                 $sources[] = $source;
             }
         }
 
         return $sources;
+    }
+
+    public function getAspectRatioByBreakpoint(array $aspectRatio, $breakpointWidth) {
+        var_dump("PINO", $breakpointWidth);
+
+        return current($aspectRatio);
     }
 
     /**
@@ -400,9 +415,9 @@ final class ImageHelper
             $styles[] = 'object-fit: ' . $objectFit;
         }
 
-        if ($aspectRatio) {
-            $styles[] = 'aspect-ratio: ' . $aspectRatio;
-        }
+        // if ($aspectRatio) {
+        //     $styles[] = 'aspect-ratio: ' . $aspectRatio;
+        // }
 
         $fallbackImage = offbeat('images')->getMaxImage($fallbackAttachmentId, $aspectRatio);
 
