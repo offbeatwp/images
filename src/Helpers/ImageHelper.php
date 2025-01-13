@@ -434,11 +434,13 @@ final class ImageHelper
             }
         }
 
+        $alt = $args['alt'] ?? '';
+
         $imageTag = '
             <figure>
                 <picture class="' . implode(' ', $classNames) . '">
                     '. implode("\n", $sourcesHtml) .'
-                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" fetchpriority="' . ($args['fetchPriority'] ?? 'auto')  . '" />
+                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" fetchpriority="' . ($args['fetchPriority'] ?? 'auto')  . '" alt="'. $alt .'"/>
                 </picture>
                 ' . (!empty($args['caption']) ? '<figcaption><div>' . $args['caption'] . '</div></figcaption>' : '') . '
             </figure>
