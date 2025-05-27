@@ -24,7 +24,7 @@ final class ImageHelper
         if (str_contains(get_post_mime_type($primaryAttachmentId), 'svg')) {
             return wp_get_attachment_image($primaryAttachmentId, 'full', false, ['class' => $args['class'] ?? null, 'loading' => $args['class'] ?? null]);
         }
-        
+
         // Filter args and aspectRatio
         $args = apply_filters('offbeat/responsiveImage/args', $args, $attachmentIds);
         $aspectRatio = apply_filters('offbeat/responsiveImage/aspectRatio', $args['aspectRatio'] ?? null, $args);
@@ -62,6 +62,12 @@ final class ImageHelper
         $breakpoints = $this->generateBreakpoints($attachmentIds, $sizes, $containedMaxWidth, !is_array($aspectRatio) ? [0 => $aspectRatio] : $aspectRatio);
 
         $sources = $this->generateSources($breakpoints, $aspectRatio);
+
+        // Alt text
+        if (!array_key_exists('alt', $args)) {
+            $altText = get_post_meta($attachmentIds[0], '_wp_attachment_image_alt', true);
+            $args['alt'] = is_string($altText) ? $altText : '';
+        }
 
         return $this->generateResponsiveImageTag($attachmentIds[0], $sources, $args);
     }
@@ -352,8 +358,6 @@ final class ImageHelper
     }
 
     public function getAspectRatioByBreakpoint(array $aspectRatio, $breakpointWidth) {
-        var_dump("PINO", $breakpointWidth);
-
         return current($aspectRatio);
     }
 
@@ -429,18 +433,16 @@ final class ImageHelper
 
         $attribeHtmlString = '';
         foreach ($optionalAttributes as $key => $value) {
-            if ($value !== null) {
-                $attribeHtmlString .= $key . '="' . $value . '" ';
+            if (is_string($value)) {
+                $attribeHtmlString .= $key . '="' . esc_attr($value) . '" ';
             }
         }
-
-        $alt = $args['alt'] ?? '';
 
         $imageTag = '
             <figure>
                 <picture class="' . implode(' ', $classNames) . '">
                     '. implode("\n", $sourcesHtml) .'
-                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" fetchpriority="' . ($args['fetchPriority'] ?? 'auto')  . '" alt="'. $alt .'"/>
+                    <img src="' . $fallbackImage['url'] . '" class="img-fluid" width="' . $fallbackImage['width']  . '" height="' . $fallbackImage['height'] . '" ' . $attribeHtmlString . 'style="'. implode('; ', $styles) .'" fetchpriority="' . ($args['fetchPriority'] ?? 'auto')  . '" />
                 </picture>
                 ' . (!empty($args['caption']) ? '<figcaption><div>' . $args['caption'] . '</div></figcaption>' : '') . '
             </figure>
