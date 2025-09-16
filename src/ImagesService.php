@@ -166,8 +166,9 @@ final class ImagesService extends AbstractService
 
         add_action('init', [new FocalPointInitAction(), 'action']);
 
-        add_action('offbeatwp_view_renderer', function (View $view) {
+        add_filter('offbeatwp_view_renderer', function (View $view) {
             $view->registerGlobal('image', new ImageHelper());
+            return $view;
         });
     }
 }
