@@ -5,12 +5,13 @@ namespace OffbeatWP\Images\Helpers;
 use Error;
 use InvalidArgumentException;
 use OffbeatWP\Images\Objects\BreakPoint;
+use OffbeatWP\Images\Repositories\ImagesRepository;
 
 final class ImageHelper
 {
-    public const MIN_VIEWPORT_WIDTH = 320;
-    public const MAX_WIDTH_INTERVAL = 200;
-    public const MAX_VIEWPORT_WIDTH = 2000;
+    public const int MIN_VIEWPORT_WIDTH = 320;
+    public const int MAX_WIDTH_INTERVAL = 200;
+    public const int MAX_VIEWPORT_WIDTH = 2000;
 
     /**
      * @param int|int[] $attachmentIds
@@ -246,7 +247,7 @@ final class ImageHelper
         $imageWidths = $this->calculateImageWidths($sizes);
 
         foreach ($imageWidths as $imageWidth) {
-            $imageHeight = offbeat('images')->getOriginalImageHeight($attachmentId);
+            $imageHeight = ImagesRepository::getInstance()->getOriginalImageHeight($attachmentId);
             $aspectRatio = self::calculateAspectRatio($aspectRatio, $attachmentId);
 
             if ($aspectRatio) {
@@ -255,10 +256,10 @@ final class ImageHelper
 
             if ($pixelDensitySrcSet) {
                 foreach ([1, 2] as $pixelDensity) {
-                    $image = offbeat('images')->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}/{$pixelDensity}x");
+                    $image = ImagesRepository::getInstance()->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}/{$pixelDensity}x");
 
                     if (!$image) {
-                        $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+                        $image = ImagesRepository::getInstance()->getMaxImage($attachmentId, $aspectRatio);
 
                         if (!$image) {
                             trigger_error('Could not get max image (pixel density ' . $pixelDensity . ') for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
@@ -271,10 +272,10 @@ final class ImageHelper
                 }
 
             } else {
-                $image = offbeat('images')->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}");
+                $image = ImagesRepository::getInstance()->getImage($attachmentId, "*{$imageWidth}x{$imageHeight}{$imageModifier}");
 
                 if (!$image) {
-                    $image = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+                    $image = ImagesRepository::getInstance()->getMaxImage($attachmentId, $aspectRatio);
 
                     if (!$image) {
                         trigger_error('Could not get max image for attachment #' . $attachmentId . ' with ratio ' . $aspectRatio);
@@ -291,7 +292,7 @@ final class ImageHelper
             return $srcSet;
         }
 
-        $maxImage = offbeat('images')->getMaxImage($attachmentId, $aspectRatio);
+        $maxImage = ImagesRepository::getInstance()->getMaxImage($attachmentId, $aspectRatio);
         $srcSet[] = $maxImage['url'] . ' ' . $maxImage['width'] . 'w';
 
         return $srcSet;
@@ -299,7 +300,7 @@ final class ImageHelper
 
     /**
      * @param array<int, BreakPoint> $breakpoints
-     * @param ?string|array $aspectRatio
+     * @param null|string|array $aspectRatio
      * @return array{sizes: string[]|null[], media_query: string, srcset?: string[]}[]
      */
     protected function generateSources(array $breakpoints, $aspectRatio): array
@@ -419,11 +420,7 @@ final class ImageHelper
             $styles[] = 'object-fit: ' . $objectFit;
         }
 
-        // if ($aspectRatio) {
-        //     $styles[] = 'aspect-ratio: ' . $aspectRatio;
-        // }
-
-        $fallbackImage = offbeat('images')->getMaxImage($fallbackAttachmentId, $aspectRatio);
+        $fallbackImage = ImagesRepository::getInstance()->getMaxImage($fallbackAttachmentId, $aspectRatio);
 
         $classNames = ['wp-block', 'wp-block-offbeatwp-image'];
 
