@@ -2,20 +2,15 @@
 
 namespace OffbeatWP\Images;
 
-use OffbeatWP\Images\Helpers\ImageHelper;
 use OffbeatWP\Contracts\View;
+use OffbeatWP\Images\Helpers\ImageHelper;
 use OffbeatWP\Images\Hooks\FocalPointInitAction;
 use OffbeatWP\Images\Repositories\ImagesRepository;
 use OffbeatWP\Services\AbstractService;
 
 final class ImagesService extends AbstractService
 {
-    /** @var class-string<ImagesRepository>[] */
-    public array $bindings = [
-        'images' => ImagesRepository::class
-    ];
-
-    public function register(View $view): void
+    public function register(): void
     {
         add_filter('image_downsize', function ($out, $attachmentId, $size) {
             if (!is_string($size)) {
@@ -27,7 +22,7 @@ final class ImagesService extends AbstractService
                 return $out;
             }
 
-            $image = offbeat('images')->getImage($attachmentId, $size);
+            $image = ImagesRepository::getInstance()->getImage($attachmentId, $size);
 
             if ($image) {
                 return [$image['url'], $image['width'], $image['height'], true];
@@ -65,7 +60,7 @@ final class ImagesService extends AbstractService
         }, 10, 3);
 
         add_filter('intermediate_image_sizes_advanced', function ($newSizes, $imageMeta, $attachmentId) {
-            $onDemandImageSizes = offbeat('images')->getOnDemandImageSizes();
+            $onDemandImageSizes = ImagesRepository::getInstance()->getOnDemandImageSizes();
 
             foreach ($onDemandImageSizes as $onDemandImageSizeKey => $onDemandImageSize) {
                 if (isset($newSizes[$onDemandImageSizeKey])) {
@@ -82,7 +77,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = offbeat('images')::getUploadDir();
+            $uploadDir = ImagesRepository::getInstance()::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
@@ -143,7 +138,7 @@ final class ImagesService extends AbstractService
                 return $dimensions;
             }
 
-            $uploadDir = offbeat('images')::getUploadDir();
+            $uploadDir = ImagesRepository::getInstance()::getUploadDir();
             
             if (
                 !$uploadDir || // If no uploaddir for on demand images, there is no point to continue;
@@ -169,8 +164,11 @@ final class ImagesService extends AbstractService
             return [$imageInfo[0], $imageInfo[1]];
         }, 10, 4);
 
-        offbeat('hooks')->addAction('init', FocalPointInitAction::class);
+        add_action('init', [new FocalPointInitAction(), 'action']);
 
-        $view->registerGlobal('image', new ImageHelper());
+        add_filter('offbeatwp_view_renderer', function (View $view) {
+            $view->registerGlobal('image', new ImageHelper());
+            return $view;
+        });
     }
 }

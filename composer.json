@@ -2,6 +2,9 @@
     "name": "offbeatwp/images",
     "description": "Responsive images with focalpoints generate on demand",
     "type": "offbeatwp-service",
+    "scripts": {
+        "phpstan": "vendor/bin/phpstan analyse --memory-limit=1G"
+    },
     "autoload": {
         "psr-4": {
             "OffbeatWP\\Images\\": "src/"
@@ -14,8 +17,8 @@
         }
     ],
     "require": {
-        "php": ">=8.0",
-        "offbeatwp/framework": ">=2"
+        "php": ">=8.3",
+        "offbeatwp/framework": "^4.0.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.11",

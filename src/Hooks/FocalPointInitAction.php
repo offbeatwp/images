@@ -3,10 +3,10 @@
 namespace OffbeatWP\Images\Hooks;
 
 use Error;
-use OffbeatWP\Hooks\AbstractAction;
+use OffbeatWP\Images\Repositories\ImagesRepository;
 use WP_Post;
 
-final class FocalPointInitAction extends AbstractAction
+final class FocalPointInitAction
 {
     /** @var int[] */
     protected array $focalPointUpdates = [];
@@ -18,8 +18,6 @@ final class FocalPointInitAction extends AbstractAction
         add_action('attachment_submitbox_misc_actions', [$this, 'addButtonToMediaEditPage'], 99);
         add_filter('attachment_fields_to_edit', [$this, 'addButtonToEditMediaModalFieldsArea'], 99, 2);
 
-        // add_filter( 'rest_request_after_callbacks', [$this, 'watchFocalPointChanges'], 99, 3 );
-
         add_action('added_attachment_meta', [$this, 'watchFocalPointChanges'], 10, 3);
         add_action('updated_attachment_meta', [$this, 'watchFocalPointChanges'], 10, 3);
         add_action('updated_post_meta', [$this, 'watchFocalPointChanges'], 10, 3);
@@ -29,7 +27,7 @@ final class FocalPointInitAction extends AbstractAction
 
         add_action('shutdown', function () {
             foreach ($this->focalPointUpdates as $focalPointUpdate) {
-                offbeat('images')->deleteImagesForAttachment($focalPointUpdate);
+                ImagesRepository::getInstance()->deleteImagesForAttachment($focalPointUpdate);
             }
         });
     }

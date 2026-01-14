@@ -7,9 +7,9 @@ final class BreakPoint
     private int $attachmentId;
     private string $width;
     private string $unit;
-    private $aspectRatio;
+    private ?string $aspectRatio;
 
-    public function __construct(int $attachmentId, string $width, $aspectRatio = null)
+    public function __construct(int $attachmentId, string $width, ?string $aspectRatio = null)
     {
         $this->attachmentId = $attachmentId;
         $this->width = $width;

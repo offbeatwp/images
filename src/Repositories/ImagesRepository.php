@@ -2,12 +2,13 @@
 
 namespace OffbeatWP\Images\Repositories;
 
+use OffbeatWP\Content\Common\Singleton;
 use OffbeatWP\Images\Helpers\ImageHelper;
 use WP_Error;
 
-final class ImagesRepository
+final class ImagesRepository extends Singleton
 {
-    public const UPLOAD_FOLDER = 'odi';
+    public const string UPLOAD_FOLDER = 'odi';
 
     /** @return array{width: int, height: int, crop: bool}[] */
     public function getOnDemandImageSizes(): array
@@ -172,7 +173,7 @@ final class ImagesRepository
             }
         }
 
-        $image = offbeat('images')->getImage($attachmentId , "*{$maxImageWidth}x{$maxImageHeight}{$imageModifier}");
+        $image = ImagesRepository::getInstance()->getImage($attachmentId , "*{$maxImageWidth}x{$maxImageHeight}{$imageModifier}");
 
         return $image; 
     }
