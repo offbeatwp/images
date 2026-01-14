@@ -18,7 +18,7 @@
     ],
     "require": {
         "php": ">=8.3",
-        "offbeatwp/framework": "dev-epic/offbeat-4"
+        "offbeatwp/framework": "^4.0.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.11",
