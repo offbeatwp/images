@@ -316,12 +316,6 @@ final class ImageHelper
 
             $sourceSizes[$breakpointWidth] = $breakpoint->getWidth();
 
-            // We are going to group the relative sources in source. So if current and next is
-            // a relative width, we're going to skip it.
-            // if ($breakpoint->getAttachmentId() === $nextBreakpoint?->getAttachmentId() && $breakpoint->getUnit() === 'vw' && $nextBreakpoint->getUnit() === 'vw') {
-            //     continue;
-            // }
-
             // If there is a next breakpoint use that as max-width, otherwise use min-width
             if ($nextBreakpointWidth) {
                 $source['media_query'] = 'max-width: ' . ($nextBreakpointWidth - 1) . 'px';
@@ -356,10 +350,6 @@ final class ImageHelper
         }
 
         return $sources;
-    }
-
-    public function getAspectRatioByBreakpoint(array $aspectRatio, $breakpointWidth) {
-        return current($aspectRatio);
     }
 
     /**
