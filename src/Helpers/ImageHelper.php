@@ -22,8 +22,24 @@ final class ImageHelper
         $primaryAttachmentId = is_array($attachmentIds) ? array_values($attachmentIds)[0] : $attachmentIds;
 
         // If image is an vector image we don't need responsive images
-        if (str_contains(get_post_mime_type($primaryAttachmentId), 'svg')) {
-            return wp_get_attachment_image($primaryAttachmentId, 'full', false, ['class' => $args['class'] ?? null, 'loading' => $args['class'] ?? null]);
+        $attachmentMimeType = get_post_mime_type($primaryAttachmentId);
+        if (is_string($attachmentMimeType) && str_contains($attachmentMimeType, 'svg')) {
+            return wp_get_attachment_image($primaryAttachmentId, 'full', false, [
+                'class' => $args['class'] ?? null,
+                'loading' => $args['loading'] ?? null
+            ]);
+        }
+
+        // AVIF: Test if server can generate derivatives, otherwise fallback
+        if (is_string($attachmentMimeType) && str_contains($attachmentMimeType, 'avif')) {
+            $testAvifImage = ImagesRepository::getInstance()->getMaxImage($primaryAttachmentId);
+
+            if (is_wp_error($testAvifImage) || !$testAvifImage) {
+                return wp_get_attachment_image($primaryAttachmentId, 'full', false, [
+                    'class' => $args['class'] ?? null,
+                    'loading' => $args['loading'] ?? null
+                ]);
+            }
         }
 
         // Filter args and aspectRatio
